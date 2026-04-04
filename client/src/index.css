@@ -1,0 +1,9 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Mapbox GL overrides */
+.mapboxgl-map {
+  width: 100%;
+  height: 100%;
+}
