@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTripStore } from '../../store/trip.js';
 import { api } from '../../services/api.js';
@@ -25,12 +25,11 @@ export default function TripPanel({ onSelectEvent }) {
   const [showShare, setShowShare] = useState(false);
   const dragFrom = useRef(null);
 
-  // Grab token once
-  useState(() => {
+  useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session) setToken(session.access_token);
     });
-  });
+  }, []);
 
   async function saveTrip() {
     if (!token) return;

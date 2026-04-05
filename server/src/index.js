@@ -6,7 +6,21 @@ const scheduler = require('./ingestion/scheduler');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(cors({ origin: process.env.FRONTEND_URL || 'http://localhost:5173' }));
+const allowedOrigins = [
+  process.env.FRONTEND_URL,
+  'http://localhost:5173',
+].filter(Boolean);
+
+app.use(cors({
+  origin: (origin, cb) => {
+    // allow requests with no origin (mobile apps, curl) or matching allowed origins
+    if (!origin || allowedOrigins.some((o) => origin.startsWith(o.replace(/\/$/, '')))) {
+      cb(null, true);
+    } else {
+      cb(new Error(`CORS: ${origin} not allowed`));
+    }
+  },
+}));
 app.use(express.json());
 
 // Routes
