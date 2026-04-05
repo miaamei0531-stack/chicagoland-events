@@ -1,13 +1,25 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api.js';
+import { supabase } from '../../services/supabase.js';
 import SourceBadge from './SourceBadge.jsx';
 import CommentThread from '../Community/CommentThread.jsx';
+import NewConversationModal from '../Messaging/NewConversationModal.jsx';
 import { formatDateTime } from '../../utils/formatDate.js';
 import { CATEGORY_COLORS } from '../../utils/categoryColors.js';
+import { useTripStore } from '../../store/trip.js';
 
 export default function EventDetailPanel({ eventId, onClose }) {
+  const navigate = useNavigate();
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [saved, setSaved] = useState(false);
+  const [savingToken, setSavingToken] = useState(null);
+  const [groups, setGroups] = useState([]);
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const [addingToTrip, setAddingToTrip] = useState(false);
+
+  const { tripMode, tripId, isInTrip, addEvent, removeEvent } = useTripStore();
 
   useEffect(() => {
     setLoading(true);
@@ -15,22 +27,95 @@ export default function EventDetailPanel({ eventId, onClose }) {
       .then(setEvent)
       .catch(console.error)
       .finally(() => setLoading(false));
+
+    // Check saved state + load public groups if logged in
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) return;
+      setSavingToken(session.access_token);
+      api.checkSaved(eventId, session.access_token)
+        .then(({ saved }) => setSaved(saved))
+        .catch(() => {});
+      api.getEventGroups(eventId, session.access_token)
+        .then(setGroups)
+        .catch(() => {});
+    });
   }, [eventId]);
 
+  async function toggleSave() {
+    if (!savingToken) return;
+    const { saved: newState } = await api.toggleSave(eventId, savingToken);
+    setSaved(newState);
+  }
+
+  async function toggleTrip() {
+    if (!savingToken || !tripMode) return;
+    setAddingToTrip(true);
+    try {
+      if (isInTrip(eventId)) {
+        await api.removeEventFromTrip(tripId, eventId, savingToken);
+        removeEvent(eventId);
+      } else {
+        let currentTripId = tripId;
+        if (!currentTripId) {
+          const trip = await api.createTrip({ name: 'My Day Trip', date: new Date().toISOString().slice(0, 10), is_public: false }, savingToken);
+          useTripStore.getState().setTripId(trip.id);
+          currentTripId = trip.id;
+        }
+        const result = await api.addEventToTrip(currentTripId, eventId, savingToken);
+        addEvent({ ...result, event_id: eventId, event });
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setAddingToTrip(false);
+    }
+  }
+
   return (
-    <div className="absolute top-0 right-0 h-full w-full md:w-96 bg-white shadow-xl z-10 flex flex-col overflow-hidden">
+    <div className="absolute top-0 right-0 h-full w-full md:w-96 theme-surface theme-shadow-lg z-10 flex flex-col overflow-hidden border-l theme-border-s">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b">
-        <span className="text-sm font-semibold text-gray-500 uppercase tracking-wide">Event Details</span>
-        <button onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl leading-none">&times;</button>
+      <div className="flex items-center justify-between px-4 py-3 border-b theme-border-s">
+        <span className="text-xs font-semibold theme-muted uppercase tracking-widest">Event Details</span>
+        <div className="flex items-center gap-2">
+          {tripMode && savingToken && (
+            <button
+              onClick={toggleTrip}
+              disabled={addingToTrip}
+              title={isInTrip(eventId) ? 'Remove from trip' : 'Add to trip'}
+              className={`h-7 px-2.5 flex items-center gap-1 rounded-full text-xs font-medium transition-all ${
+                isInTrip(eventId)
+                  ? 'bg-[var(--accent)] text-white'
+                  : 'theme-surface2 theme-muted hover:border-[var(--accent)] border theme-border-s'
+              }`}
+            >
+              {isInTrip(eventId) ? '✓ In Trip' : '+ Trip'}
+            </button>
+          )}
+          {savingToken && (
+            <button
+              onClick={toggleSave}
+              title={saved ? 'Remove from collection' : 'Save to collection'}
+              className={`w-7 h-7 flex items-center justify-center rounded-full transition-all ${
+                saved
+                  ? 'bg-amber-100 text-amber-600 dark:bg-amber-900/40 dark:text-amber-400'
+                  : 'theme-surface2 theme-faint hover:text-amber-500'
+              }`}
+            >
+              <svg className="w-4 h-4" fill={saved ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+              </svg>
+            </button>
+          )}
+          <button onClick={onClose} className="theme-faint hover:theme-text text-xl leading-none">&times;</button>
+        </div>
       </div>
 
       {loading && (
-        <div className="flex-1 flex items-center justify-center text-gray-400">Loading...</div>
+        <div className="flex-1 flex items-center justify-center theme-faint text-sm">Loading…</div>
       )}
 
       {!loading && !event && (
-        <div className="flex-1 flex items-center justify-center text-gray-400">Event not found.</div>
+        <div className="flex-1 flex items-center justify-center theme-faint text-sm">Event not found.</div>
       )}
 
       {!loading && event && (
@@ -41,7 +126,7 @@ export default function EventDetailPanel({ eventId, onClose }) {
           </div>
 
           {/* Title */}
-          <h2 className="text-xl font-bold text-gray-900 leading-snug">{event.title}</h2>
+          <h2 className="text-xl font-bold theme-text leading-snug">{event.title}</h2>
 
           {/* Categories */}
           {event.category?.length > 0 && (
@@ -55,10 +140,10 @@ export default function EventDetailPanel({ eventId, onClose }) {
           )}
 
           {/* Date & time */}
-          <div className="text-sm text-gray-700 space-y-0.5">
+          <div className="text-sm theme-text space-y-0.5">
             <div className="font-medium">{formatDateTime(event.start_datetime)}</div>
             {event.end_datetime && (
-              <div className="text-gray-500">Until {formatDateTime(event.end_datetime)}</div>
+              <div className="theme-muted">Until {formatDateTime(event.end_datetime)}</div>
             )}
             {event.is_recurring && (
               <div className="text-community font-medium text-xs">Recurring event</div>
@@ -67,10 +152,10 @@ export default function EventDetailPanel({ eventId, onClose }) {
 
           {/* Location */}
           {(event.venue_name || event.address) && (
-            <div className="text-sm text-gray-700">
-              {event.venue_name && <div className="font-medium">{event.venue_name}</div>}
-              {event.address && <div className="text-gray-500">{event.address}</div>}
-              {event.neighborhood && <div className="text-gray-400 text-xs">{event.neighborhood}{event.city ? `, ${event.city}` : ''}</div>}
+            <div className="text-sm">
+              {event.venue_name && <div className="font-medium theme-text">{event.venue_name}</div>}
+              {event.address && <div className="theme-muted">{event.address}</div>}
+              {event.neighborhood && <div className="theme-faint text-xs">{event.neighborhood}{event.city ? `, ${event.city}` : ''}</div>}
             </div>
           )}
 
@@ -94,7 +179,7 @@ export default function EventDetailPanel({ eventId, onClose }) {
 
           {/* Description */}
           {event.description && (
-            <p className="text-sm text-gray-600 leading-relaxed">{event.description}</p>
+            <p className="text-sm theme-muted leading-relaxed">{event.description}</p>
           )}
 
           {/* Links */}
@@ -121,9 +206,51 @@ export default function EventDetailPanel({ eventId, onClose }) {
             )}
           </div>
 
+          {/* Public Groups */}
+          {savingToken && (
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold theme-muted uppercase tracking-widest">Groups</span>
+                <button
+                  onClick={() => setShowCreateGroup(true)}
+                  className="text-xs text-[var(--accent)] hover:underline"
+                >
+                  + Create group
+                </button>
+              </div>
+              {groups.length === 0 ? (
+                <p className="text-xs theme-faint">No public groups yet. Be the first!</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {groups.map((g) => (
+                    <button
+                      key={g.id}
+                      onClick={() => navigate(`/messages/${g.id}`)}
+                      className="w-full flex items-center justify-between px-3 py-2 rounded-xl border theme-border-s theme-surface2 hover:border-[var(--accent)] transition-all text-left"
+                    >
+                      <div>
+                        <p className="text-sm font-medium theme-text">{g.name}</p>
+                        <p className="text-xs theme-faint">by {g.creator?.display_name} · {g.member_count?.[0]?.count ?? 0} members</p>
+                      </div>
+                      <span className="text-xs text-[var(--accent)]">Join →</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Comments */}
           <CommentThread eventId={eventId} />
         </div>
+      )}
+      {showCreateGroup && savingToken && (
+        <NewConversationModal
+          token={savingToken}
+          onClose={() => setShowCreateGroup(false)}
+          forEventId={eventId}
+          forEventTitle={event?.title}
+        />
       )}
     </div>
   );

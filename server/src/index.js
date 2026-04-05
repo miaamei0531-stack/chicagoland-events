@@ -16,6 +16,9 @@ app.use('/api/v1/submissions', require('./routes/submissions'));
 app.use('/api/v1', require('./routes/comments')); // handles /events/:id/comments and /comments/:id
 app.use('/api/v1/auth', require('./routes/auth'));
 app.use('/api/v1/admin', require('./routes/admin'));
+app.use('/api/v1', require('./routes/collections')); // /events/:id/save, /events/:id/saved, /me/collections
+app.use('/api/v1/conversations', require('./routes/conversations'));
+app.use('/api/v1/trips', require('./routes/trips'));
 app.use('/api/v1/ingest', require('./routes/ingest'));
 
 app.listen(PORT, () => {

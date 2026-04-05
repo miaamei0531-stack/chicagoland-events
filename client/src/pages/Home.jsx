@@ -1,56 +1,65 @@
 import { useState } from 'react';
 import Navbar from '../components/Layout/Navbar.jsx';
-import Sidebar from '../components/Layout/Sidebar.jsx';
 import MapView from '../components/Map/MapView.jsx';
+import FiltersPanel from '../components/Layout/FiltersPanel.jsx';
 import EventList from '../components/Events/EventList.jsx';
 import SubmitEventButton from '../components/Submissions/SubmitEventButton.jsx';
+import TripPanel from '../components/Trip/TripPanel.jsx';
+import { useTripStore } from '../store/trip.js';
 
 export default function Home() {
   const [selectedEventId, setSelectedEventId] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
+  const tripMode = useTripStore((s) => s.tripMode);
 
   return (
-    <div className="flex flex-col h-screen">
-      <Navbar />
-      <div className="flex flex-1 overflow-hidden relative">
-        <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+    <div className="flex flex-col h-screen theme-bg pb-14 md:pb-0">
+      <Navbar
+        onFiltersToggle={() => setFiltersOpen((v) => !v)}
+        onListToggle={() => setListOpen((v) => !v)}
+      />
 
-        <main className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Map */}
+        <div className="flex-1 relative">
           <MapView
             selectedEventId={selectedEventId}
             onSelectEvent={setSelectedEventId}
           />
+          {!tripMode && <SubmitEventButton />}
+        </div>
 
-          {/* Mobile toggle buttons */}
-          <div className="absolute top-3 left-3 z-10 flex gap-2 md:hidden">
-            <button
-              onClick={() => setSidebarOpen(true)}
-              className="flex items-center gap-1.5 bg-white text-gray-700 text-sm font-medium px-3 py-1.5 rounded-full shadow border border-gray-200"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4h18M3 8h12M3 12h8" />
-              </svg>
-              Filters
-            </button>
-            <button
-              onClick={() => setListOpen(true)}
-              className="flex items-center gap-1.5 bg-white text-gray-700 text-sm font-medium px-3 py-1.5 rounded-full shadow border border-gray-200"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-              </svg>
-              List
-            </button>
-          </div>
+        {/* Right panel */}
+        <div className={`
+          fixed md:static inset-y-0 right-0 z-30 md:z-auto
+          flex flex-col w-80
+          transform transition-transform duration-200 ease-in-out
+          ${listOpen || filtersOpen || tripMode ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
+        `}>
+          {tripMode ? (
+            <>
+              <FiltersPanel open={true} onClose={() => {}} />
+              <TripPanel onSelectEvent={setSelectedEventId} />
+            </>
+          ) : (
+            <>
+              <FiltersPanel open={filtersOpen} onClose={() => setFiltersOpen(false)} />
+              <EventList
+                onSelectEvent={(id) => { setSelectedEventId(id); setListOpen(false); }}
+                onClose={() => setListOpen(false)}
+              />
+            </>
+          )}
+        </div>
 
-          <SubmitEventButton />
-          <EventList
-            onSelectEvent={setSelectedEventId}
-            open={listOpen}
-            onClose={() => setListOpen(false)}
+        {/* Mobile backdrop */}
+        {(filtersOpen || listOpen) && !tripMode && (
+          <div
+            className="fixed inset-0 bg-black/30 z-20 md:hidden"
+            onClick={() => { setFiltersOpen(false); setListOpen(false); }}
           />
-        </main>
+        )}
       </div>
     </div>
   );

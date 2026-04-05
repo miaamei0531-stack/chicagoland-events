@@ -45,6 +45,32 @@ export const api = {
   getMe: (token) => request('/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
   geocode: (address, token) => request('/auth/geocode', { method: 'POST', body: JSON.stringify({ address }), headers: { Authorization: `Bearer ${token}` } }),
 
+  // Trips
+  getTrip: (id, token) => request(`/trips/${id}`, token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+  getMyTrips: (token) => request('/trips/me/list', { headers: { Authorization: `Bearer ${token}` } }),
+  createTrip: (body, token) => request('/trips', { method: 'POST', body: JSON.stringify(body), headers: { Authorization: `Bearer ${token}` } }),
+  updateTrip: (id, body, token) => request(`/trips/${id}`, { method: 'PUT', body: JSON.stringify(body), headers: { Authorization: `Bearer ${token}` } }),
+  deleteTrip: (id, token) => request(`/trips/${id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }),
+  addEventToTrip: (tripId, event_id, token) => request(`/trips/${tripId}/events`, { method: 'POST', body: JSON.stringify({ event_id }), headers: { Authorization: `Bearer ${token}` } }),
+  removeEventFromTrip: (tripId, eventId, token) => request(`/trips/${tripId}/events/${eventId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }),
+  reorderTripEvents: (tripId, order, token) => request(`/trips/${tripId}/events/reorder`, { method: 'PUT', body: JSON.stringify({ order }), headers: { Authorization: `Bearer ${token}` } }),
+
+  // Conversations / Messaging
+  getConversations: (token) => request('/conversations', { headers: { Authorization: `Bearer ${token}` } }),
+  getConversation: (id, token) => request(`/conversations/${id}`, { headers: { Authorization: `Bearer ${token}` } }),
+  createConversation: (body, token) => request('/conversations', { method: 'POST', body: JSON.stringify(body), headers: { Authorization: `Bearer ${token}` } }),
+  getMessages: (convId, token, before) => request(`/conversations/${convId}/messages${before ? `?before=${before}` : ''}`, { headers: { Authorization: `Bearer ${token}` } }),
+  sendMessage: (convId, body, token) => request(`/conversations/${convId}/messages`, { method: 'POST', body: JSON.stringify({ body }), headers: { Authorization: `Bearer ${token}` } }),
+  addMember: (convId, user_id, token) => request(`/conversations/${convId}/members`, { method: 'POST', body: JSON.stringify({ user_id }), headers: { Authorization: `Bearer ${token}` } }),
+  leaveConversation: (convId, token) => request(`/conversations/${convId}/members/me`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }),
+  getEventGroups: (eventId, token) => request(`/events/${eventId}/groups`, { headers: { Authorization: `Bearer ${token}` } }),
+  searchUsers: (q, token) => request(`/auth/users/search?q=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${token}` } }),
+
+  // Collections
+  toggleSave: (eventId, token) => request(`/events/${eventId}/save`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }),
+  checkSaved: (eventId, token) => request(`/events/${eventId}/saved`, { headers: { Authorization: `Bearer ${token}` } }),
+  getCollections: (token) => request('/me/collections', { headers: { Authorization: `Bearer ${token}` } }),
+
   // Admin
   getAdminSubmissions: (token) => request('/admin/submissions', { headers: { Authorization: `Bearer ${token}` } }),
   getAdminAllSubmissions: (token, status) => request(`/admin/submissions/all${status ? `?status=${status}` : ''}`, { headers: { Authorization: `Bearer ${token}` } }),

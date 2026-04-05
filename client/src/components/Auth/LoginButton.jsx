@@ -9,7 +9,7 @@ export default function LoginButton() {
   return (
     <button
       onClick={signIn}
-      className="flex items-center gap-2 text-sm font-medium px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors"
+      className="flex items-center gap-2 text-xs font-medium px-3 py-1.5 rounded-full border theme-border-s theme-surface2 theme-text hover:border-[var(--accent)] transition-colors"
     >
       <svg className="w-4 h-4" viewBox="0 0 24 24">
         <path

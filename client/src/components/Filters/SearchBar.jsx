@@ -14,7 +14,7 @@ export default function SearchBar() {
   return (
     <div className="relative">
       <svg
-        className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+        className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 theme-faint"
         fill="none" stroke="currentColor" strokeWidth={2}
         viewBox="0 0 24 24"
       >
@@ -25,8 +25,8 @@ export default function SearchBar() {
         type="text"
         defaultValue={searchQuery}
         onChange={handleChange}
-        placeholder="Search events..."
-        className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:border-blue-400"
+        placeholder="Search events…"
+        className="w-full pl-8 pr-3 py-1.5 text-xs rounded-xl border theme-input transition-colors"
       />
     </div>
   );

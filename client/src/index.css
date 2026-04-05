@@ -2,8 +2,96 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Mapbox GL overrides */
+/* ── Google Font ─────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* ── Mapbox overrides ────────────────────────────────────────── */
 .mapboxgl-map {
   width: 100%;
   height: 100%;
 }
+.mapboxgl-ctrl-group {
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12) !important;
+}
+.dark .mapboxgl-ctrl-group {
+  background: #1e1e2e !important;
+  border-color: #2e2e3e !important;
+}
+.dark .mapboxgl-ctrl-group button {
+  background-color: #1e1e2e !important;
+  border-color: #2e2e3e !important;
+  color: #ccc !important;
+}
+
+/* ── Day theme (default) ─────────────────────────────────────── */
+:root {
+  --bg: #fdfaf4;
+  --surface: #fff;
+  --surface-2: #faf3e0;
+  --border: #edd89a;
+  --border-subtle: #f5e6c0;
+  --text: #2c1f0e;
+  --text-muted: #8a6a3a;
+  --text-faint: #b8975a;
+  --accent: #d4a843;
+  --accent-hover: #b88a2e;
+  --shadow: rgba(180, 140, 60, 0.14);
+}
+
+/* ── Dark theme ──────────────────────────────────────────────── */
+.dark {
+  --bg: #0f0f17;
+  --surface: #1a1a27;
+  --surface-2: #22223a;
+  --border: #2e2e4a;
+  --border-subtle: #252535;
+  --text: #e8e8f0;
+  --text-muted: #9090b0;
+  --text-faint: #5a5a7a;
+  --accent: #7c6af5;
+  --accent-hover: #6354d4;
+  --shadow: rgba(0, 0, 0, 0.4);
+}
+
+/* ── Utility classes using CSS vars ──────────────────────────── */
+@layer components {
+  .theme-bg       { background-color: var(--bg); }
+  .theme-surface  { background-color: var(--surface); }
+  .theme-surface2 { background-color: var(--surface-2); }
+  .theme-border   { border-color: var(--border); }
+  .theme-border-s { border-color: var(--border-subtle); }
+  .theme-text     { color: var(--text); }
+  .theme-muted    { color: var(--text-muted); }
+  .theme-faint    { color: var(--text-faint); }
+  .theme-shadow   { box-shadow: 0 2px 12px var(--shadow); }
+  .theme-shadow-lg { box-shadow: 0 4px 24px var(--shadow); }
+
+  .theme-input {
+    background-color: var(--surface);
+    border-color: var(--border-subtle);
+    color: var(--text);
+  }
+  .theme-input:focus {
+    border-color: var(--accent);
+    outline: none;
+  }
+  .theme-input::placeholder {
+    color: var(--text-faint);
+  }
+
+  .theme-btn-accent {
+    background-color: var(--accent);
+    color: #fff;
+    transition: background-color 0.15s;
+  }
+  .theme-btn-accent:hover {
+    background-color: var(--accent-hover);
+  }
+}
+
+/* ── Scrollbar (subtle) ──────────────────────────────────────── */
+::-webkit-scrollbar { width: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }

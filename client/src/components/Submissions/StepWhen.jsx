@@ -9,7 +9,17 @@ export default function StepWhen({ data, onChange }) {
           <input
             type="datetime-local"
             value={data.start_datetime}
-            onChange={(e) => onChange({ start_datetime: e.target.value })}
+            onChange={(e) => {
+              const start = e.target.value;
+              const updates = { start_datetime: start };
+              // Auto-set end to start + 1 hour if end is not already set
+              if (start && !data.end_datetime) {
+                const end = new Date(new Date(start).getTime() + 60 * 60 * 1000);
+                // Format as datetime-local string: YYYY-MM-DDTHH:MM
+                updates.end_datetime = end.toISOString().slice(0, 16);
+              }
+              onChange(updates);
+            }}
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-400"
           />
         </div>

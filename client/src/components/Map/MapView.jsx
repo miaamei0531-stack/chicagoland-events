@@ -3,20 +3,37 @@ import mapboxgl from 'mapbox-gl';
 import { CHICAGO_CENTER } from '../../utils/geoUtils.js';
 import { api } from '../../services/api.js';
 import { useFiltersStore } from '../../store/filters.js';
+import { useThemeStore } from '../../store/theme.js';
+import { useTripStore } from '../../store/trip.js';
+import { CATEGORY_HEX, DEFAULT_HEX, ALL_CATEGORIES } from '../../utils/categoryColors.js';
 import EventDetailPanel from '../Events/EventDetailPanel.jsx';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
-const OFFICIAL_COLOR = '#3B82F6';   // blue
-const COMMUNITY_COLOR = '#2E986A';  // teal
+const DAY_STYLE = 'mapbox://styles/mapbox/light-v11';
+const DARK_STYLE = 'mapbox://styles/mapbox/dark-v11';
+const CLUSTER_COLOR = '#64748b'; // slate — neutral for mixed-category clusters
+
+// Build a Mapbox match expression: ['match', ['get', 'primary_category'], cat1, hex1, cat2, hex2, ..., fallback]
+function categoryColorExpression() {
+  const expr = ['match', ['get', 'primary_category']];
+  ALL_CATEGORIES.forEach((cat) => {
+    expr.push(cat, CATEGORY_HEX[cat] || DEFAULT_HEX);
+  });
+  expr.push(DEFAULT_HEX); // fallback
+  return expr;
+}
+
+const COLOR_EXPR = categoryColorExpression();
 
 export default function MapView({ selectedEventId, onSelectEvent }) {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const boundsTimer = useRef(null);
   const { categories, startDate, endDate, searchQuery } = useFiltersStore();
+  const dark = useThemeStore((s) => s.dark);
+  const { tripMode, tripDate, tripEvents, routeMode } = useTripStore();
 
-  // Fetch events for current bounds and update both GeoJSON sources
   const loadEvents = useCallback(async () => {
     if (!map.current) return;
     const b = map.current.getBounds();
@@ -27,69 +44,154 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
         east: b.getEast(),
         west: b.getWest(),
       };
+      // Always apply category/search filters
       if (categories.length) params.category = categories;
-      if (startDate) params.start_date = startDate;
-      if (endDate) params.end_date = endDate;
       if (searchQuery) params.q = searchQuery;
+
+      if (tripMode && tripDate) {
+        // Lock date to trip date; ignore the normal date range filters
+        params.start_date = tripDate;
+        params.end_date = tripDate;
+      } else {
+        if (startDate) params.start_date = startDate;
+        if (endDate) params.end_date = endDate;
+      }
 
       const events = await api.getEventsWithinBounds(params);
 
-      const official = { type: 'FeatureCollection', features: [] };
-      const community = { type: 'FeatureCollection', features: [] };
+      const geojson = { type: 'FeatureCollection', features: [] };
 
       events.forEach((e) => {
-        if (!e.coordinates) return;
-        // coordinates comes back as WKB hex from PostGIS — parse via Supabase
-        // Supabase returns GEOGRAPHY as GeoJSON when using postgis extension
-        let coords;
-        if (typeof e.coordinates === 'string') {
-          // WKB — skip, rely on Supabase returning GeoJSON
-          return;
-        }
-        if (e.coordinates?.coordinates) {
-          coords = e.coordinates.coordinates; // [lng, lat]
-        } else {
-          return;
-        }
+        if (!e.coordinates?.coordinates) return;
 
-        const feature = {
+        const primaryCategory = Array.isArray(e.category) && e.category.length > 0
+          ? e.category[0]
+          : null;
+
+        geojson.features.push({
           type: 'Feature',
-          geometry: { type: 'Point', coordinates: coords },
+          geometry: { type: 'Point', coordinates: e.coordinates.coordinates },
           properties: {
             id: e.id,
             title: e.title,
             start_datetime: e.start_datetime,
-            category: JSON.stringify(e.category),
+            primary_category: primaryCategory,
             is_user_submitted: e.is_user_submitted,
             is_free: e.is_free,
-            venue_name: e.venue_name,
+            venue_name: e.venue_name || null,
           },
-        };
-
-        if (e.is_user_submitted) {
-          community.features.push(feature);
-        } else {
-          official.features.push(feature);
-        }
+        });
       });
 
-      if (map.current.getSource('official-events')) {
-        map.current.getSource('official-events').setData(official);
-      }
-      if (map.current.getSource('community-events')) {
-        map.current.getSource('community-events').setData(community);
+      if (map.current.getSource('events')) {
+        map.current.getSource('events').setData(geojson);
       }
     } catch (err) {
       console.error('Failed to load events:', err);
     }
-  }, []);
+  }, [tripMode, tripDate, categories, startDate, endDate, searchQuery]);
+
+  function addSourcesAndLayers() {
+    if (map.current.getSource('events')) return; // already added
+
+    map.current.addSource('events', {
+      type: 'geojson',
+      data: { type: 'FeatureCollection', features: [] },
+      cluster: true,
+      clusterMaxZoom: 14,
+      clusterRadius: 45,
+    });
+
+    // ── Cluster circle ──
+    map.current.addLayer({
+      id: 'event-clusters',
+      type: 'circle',
+      source: 'events',
+      filter: ['has', 'point_count'],
+      paint: {
+        'circle-color': CLUSTER_COLOR,
+        'circle-radius': ['step', ['get', 'point_count'], 18, 5, 24, 20, 30],
+        'circle-opacity': 0.82,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#fff',
+        'circle-stroke-opacity': 0.6,
+      },
+    });
+
+    // Cluster count label
+    map.current.addLayer({
+      id: 'event-cluster-count',
+      type: 'symbol',
+      source: 'events',
+      filter: ['has', 'point_count'],
+      layout: {
+        'text-field': '{point_count_abbreviated}',
+        'text-size': 12,
+        'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+      },
+      paint: { 'text-color': '#fff' },
+    });
+
+    // ── Individual markers — outer glow ──
+    map.current.addLayer({
+      id: 'event-unclustered-glow',
+      type: 'circle',
+      source: 'events',
+      filter: ['!', ['has', 'point_count']],
+      paint: {
+        'circle-color': COLOR_EXPR,
+        'circle-radius': 14,
+        'circle-opacity': 0.18,
+        'circle-stroke-width': 0,
+      },
+    });
+
+    // ── Individual markers — main dot ──
+    map.current.addLayer({
+      id: 'event-unclustered',
+      type: 'circle',
+      source: 'events',
+      filter: ['!', ['has', 'point_count']],
+      paint: {
+        'circle-color': COLOR_EXPR,
+        'circle-radius': 8,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': '#ffffff',
+        'circle-opacity': 0.95,
+      },
+    });
+
+    // ── Click handlers ──
+    map.current.on('click', 'event-unclustered', (e) => {
+      onSelectEvent(e.features[0].properties.id);
+    });
+    map.current.on('click', 'event-unclustered-glow', (e) => {
+      onSelectEvent(e.features[0].properties.id);
+    });
+    ['event-unclustered', 'event-unclustered-glow'].forEach((layer) => {
+      map.current.on('mouseenter', layer, () => { map.current.getCanvas().style.cursor = 'pointer'; });
+      map.current.on('mouseleave', layer, () => { map.current.getCanvas().style.cursor = ''; });
+    });
+
+    // ── Cluster click → zoom in ──
+    map.current.on('click', 'event-clusters', (e) => {
+      const features = map.current.queryRenderedFeatures(e.point, { layers: ['event-clusters'] });
+      const clusterId = features[0].properties.cluster_id;
+      map.current.getSource('events').getClusterExpansionZoom(clusterId, (err, zoom) => {
+        if (err) return;
+        map.current.easeTo({ center: features[0].geometry.coordinates, zoom });
+      });
+    });
+    map.current.on('mouseenter', 'event-clusters', () => { map.current.getCanvas().style.cursor = 'pointer'; });
+    map.current.on('mouseleave', 'event-clusters', () => { map.current.getCanvas().style.cursor = ''; });
+  }
 
   useEffect(() => {
     if (map.current) return;
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: dark ? DARK_STYLE : DAY_STYLE,
       center: [CHICAGO_CENTER.lng, CHICAGO_CENTER.lat],
       zoom: 11,
     });
@@ -97,158 +199,96 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     map.current.addControl(new mapboxgl.NavigationControl(), 'top-right');
 
     map.current.on('load', () => {
-      // ── Official events source + layers (blue) ──
-      map.current.addSource('official-events', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
-        cluster: true,
-        clusterMaxZoom: 14,
-        clusterRadius: 50,
-      });
-
-      // Cluster circles
-      map.current.addLayer({
-        id: 'official-clusters',
-        type: 'circle',
-        source: 'official-events',
-        filter: ['has', 'point_count'],
-        paint: {
-          'circle-color': OFFICIAL_COLOR,
-          'circle-radius': ['step', ['get', 'point_count'], 18, 5, 24, 20, 30],
-          'circle-opacity': 0.85,
-        },
-      });
-      map.current.addLayer({
-        id: 'official-cluster-count',
-        type: 'symbol',
-        source: 'official-events',
-        filter: ['has', 'point_count'],
-        layout: {
-          'text-field': '{point_count_abbreviated}',
-          'text-size': 13,
-          'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-        },
-        paint: { 'text-color': '#fff' },
-      });
-
-      // Individual markers
-      map.current.addLayer({
-        id: 'official-unclustered',
-        type: 'circle',
-        source: 'official-events',
-        filter: ['!', ['has', 'point_count']],
-        paint: {
-          'circle-color': OFFICIAL_COLOR,
-          'circle-radius': 8,
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#fff',
-        },
-      });
-
-      // ── Community events source + layers (teal) ──
-      map.current.addSource('community-events', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] },
-        cluster: true,
-        clusterMaxZoom: 14,
-        clusterRadius: 50,
-      });
-
-      map.current.addLayer({
-        id: 'community-clusters',
-        type: 'circle',
-        source: 'community-events',
-        filter: ['has', 'point_count'],
-        paint: {
-          'circle-color': COMMUNITY_COLOR,
-          'circle-radius': ['step', ['get', 'point_count'], 18, 5, 24, 20, 30],
-          'circle-opacity': 0.85,
-        },
-      });
-      map.current.addLayer({
-        id: 'community-cluster-count',
-        type: 'symbol',
-        source: 'community-events',
-        filter: ['has', 'point_count'],
-        layout: {
-          'text-field': '{point_count_abbreviated}',
-          'text-size': 13,
-          'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
-        },
-        paint: { 'text-color': '#fff' },
-      });
-
-      map.current.addLayer({
-        id: 'community-unclustered',
-        type: 'circle',
-        source: 'community-events',
-        filter: ['!', ['has', 'point_count']],
-        paint: {
-          'circle-color': COMMUNITY_COLOR,
-          'circle-radius': 8,
-          'circle-stroke-width': 2,
-          'circle-stroke-color': '#fff',
-        },
-      });
-
-      // ── Click handlers ──
-      ['official-unclustered', 'community-unclustered'].forEach((layerId) => {
-        map.current.on('click', layerId, (e) => {
-          const props = e.features[0].properties;
-          onSelectEvent(props.id);
-        });
-
-        map.current.on('mouseenter', layerId, () => {
-          map.current.getCanvas().style.cursor = 'pointer';
-        });
-        map.current.on('mouseleave', layerId, () => {
-          map.current.getCanvas().style.cursor = '';
-        });
-      });
-
-      // Click cluster → zoom in
-      ['official-clusters', 'community-clusters'].forEach((layerId) => {
-        map.current.on('click', layerId, (e) => {
-          const features = map.current.queryRenderedFeatures(e.point, { layers: [layerId] });
-          const clusterId = features[0].properties.cluster_id;
-          const source = layerId.startsWith('official') ? 'official-events' : 'community-events';
-          map.current.getSource(source).getClusterExpansionZoom(clusterId, (err, zoom) => {
-            if (err) return;
-            map.current.easeTo({ center: features[0].geometry.coordinates, zoom });
-          });
-        });
-        map.current.on('mouseenter', layerId, () => {
-          map.current.getCanvas().style.cursor = 'pointer';
-        });
-        map.current.on('mouseleave', layerId, () => {
-          map.current.getCanvas().style.cursor = '';
-        });
-      });
-
+      addSourcesAndLayers();
       loadEvents();
     });
 
-    // Debounced reload on pan/zoom
     map.current.on('moveend', () => {
       clearTimeout(boundsTimer.current);
       boundsTimer.current = setTimeout(loadEvents, 400);
     });
 
-    return () => {
-      clearTimeout(boundsTimer.current);
-    };
+    return () => { clearTimeout(boundsTimer.current); };
   }, [loadEvents]);
 
-  // Reload markers when filters change (map already initialized)
+  // Swap map style when theme changes — re-add layers after style loads
+  useEffect(() => {
+    if (!map.current) return;
+    map.current.setStyle(dark ? DARK_STYLE : DAY_STYLE);
+    map.current.once('styledata', () => {
+      addSourcesAndLayers();
+      loadEvents();
+    });
+  }, [dark, loadEvents]);
+
+  // Reload markers when filters or trip date/mode changes
   useEffect(() => {
     if (!map.current) return;
     clearTimeout(boundsTimer.current);
     boundsTimer.current = setTimeout(loadEvents, 300);
-  }, [categories, startDate, endDate, searchQuery, loadEvents]);
+  }, [categories, startDate, endDate, searchQuery, tripMode, tripDate, loadEvents]);
+
+  // Draw Directions route when trip events change
+  useEffect(() => {
+    if (!map.current) return;
+
+    const coords = tripEvents
+      .filter((te) => te.event?.coordinates?.coordinates)
+      .map((te) => te.event.coordinates.coordinates); // [lng, lat]
+
+    // Remove existing route
+    if (map.current.getLayer('trip-route')) map.current.removeLayer('trip-route');
+    if (map.current.getSource('trip-route')) map.current.removeSource('trip-route');
+
+    if (!tripMode || coords.length < 2) return;
+
+    const profile = routeMode === 'walking' ? 'walking' : 'driving';
+    const waypointStr = coords.map((c) => c.join(',')).join(';');
+    const token = import.meta.env.VITE_MAPBOX_TOKEN;
+    const url = `https://api.mapbox.com/directions/v5/mapbox/${profile}/${waypointStr}?geometries=geojson&overview=full&access_token=${token}`;
+
+    fetch(url)
+      .then((r) => r.json())
+      .then((data) => {
+        const route = data.routes?.[0]?.geometry;
+        if (!route || !map.current) return;
+        map.current.addSource('trip-route', { type: 'geojson', data: { type: 'Feature', geometry: route } });
+        map.current.addLayer({
+          id: 'trip-route',
+          type: 'line',
+          source: 'trip-route',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': 'var(--accent, #d4a843)',
+            'line-width': 4,
+            'line-opacity': 0.8,
+            'line-dasharray': [2, 1],
+          },
+        }, 'event-clusters'); // insert below markers
+      })
+      .catch(() => {});
+  }, [tripMode, tripEvents, routeMode]);
 
   return (
     <div className="relative flex-1 h-full">
       <div ref={mapContainer} className="w-full h-full" />
+
+      {/* Category legend */}
+      <div className="absolute bottom-6 left-3 z-10 theme-surface rounded-2xl theme-shadow p-2.5 border theme-border-s max-w-[170px]">
+        <p className="text-[10px] font-semibold theme-muted uppercase tracking-widest mb-1.5 px-0.5">Categories</p>
+        <div className="space-y-1">
+          {ALL_CATEGORIES.map((cat) => (
+            <div key={cat} className="flex items-center gap-1.5">
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ backgroundColor: CATEGORY_HEX[cat] }}
+              />
+              <span className="text-[10px] theme-text leading-none">{cat}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
       {selectedEventId && (
         <EventDetailPanel
           eventId={selectedEventId}

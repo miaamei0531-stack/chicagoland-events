@@ -460,3 +460,119 @@ Mapbox Draw plugin (`@mapbox/mapbox-gl-draw`) deferred to post-MVP. Adds meaning
 - Official/ingested events: `#3B82F6` (Tailwind blue-500), CSS class `bg-official`
 - Community/approved events: `#2E986A` (custom teal), CSS class `bg-community`
 - Defined in `tailwind.config.js` as theme extensions so they're usable as Tailwind classes everywhere
+
+---
+
+## Phase 2 Decisions
+
+### P2: UI/Style Overhaul
+Two themes — both minimal:
+1. **Day mode** — beige/warm yellow palette, Monet-inspired. Mapbox style: `mapbox://styles/mapbox/light-v11` as base, customized toward warm/sandy tones. Tailwind theme extended with warm neutrals (sand, cream, amber).
+2. **Dark mode** — minimal dark. Mapbox style: `mapbox://styles/mapbox/dark-v11`.
+
+**Layout** (new, replacing sidebar-left layout):
+- Map takes full left side
+- Filters panel: top-right
+- Event list: bottom-right
+- On mobile: map full screen, floating "Filters" and "List" toggle buttons
+
+**Vibe reference**: Poetle/Wordle — clean, friendly, soft, lovely. No harsh edges, warm typography, gentle shadows.
+
+**Event cards**: keep current structure but restyle to match warm theme.
+
+### P2: Event end time default
+When a user creates an event and sets a start time, end time auto-defaults to start + 1 hour. User can still override. Implemented in `StepWhen.jsx` via `onChange` on start_datetime input.
+
+### P2: Map style — minimal, event-first
+Switched from `navigation-day-v1` / `navigation-night-v1` to `light-v11` / `dark-v11`.
+Reason: navigation styles have colored road lanes, traffic indicators, and heavy labeling that compete visually with event markers. `light-v11` and `dark-v11` are near-neutral canvases — subtle gray roads, minimal labels — so event markers read as the primary visual element.
+
+### P2: Collections — save events + see commented events
+Two sub-features:
+a) **Save/bookmark an event** — bookmark icon on EventDetailPanel. Toggles save. Stored in `saved_events` table (user_id, event_id, unique).
+b) **Collections page** at `/collections` — two tabs: "Saved" (all bookmarked events) and "Commented" (events the user has commented on). Requires auth.
+
+API:
+- `POST /api/v1/events/:id/save` — toggle (saves if not saved, unsaves if saved)
+- `GET /api/v1/me/collections` — returns `{ saved: [...events], commented: [...events] }`
+
+DB: new `saved_events` table — see migration `m13_saved_events.sql`.
+
+### P2: Chat & Messaging Spec
+
+**Model**: Instagram-style. Start a DM with any user → add people → becomes a group chat.
+
+**Rules:**
+- Any logged-in user can start a DM or group
+- Max 300 members per group
+- Group creator can set public or private
+- Public groups are discoverable and shown on the event detail panel if linked to an event
+- Private groups only visible to members
+
+**Data model:**
+```
+conversations        — id, name, is_group, is_public, event_id (nullable FK → events), created_by (FK → users), max_members (default 300), created_at
+conversation_members — conversation_id, user_id, role (admin|member), joined_at, UNIQUE(conversation_id, user_id)
+messages             — id, conversation_id, sender_id, body, created_at, is_deleted
+```
+
+**API routes (all require checkAuth):**
+- POST /api/v1/conversations — create DM or group
+- GET /api/v1/conversations — list user's conversations
+- GET /api/v1/conversations/:id — get conversation + members
+- POST /api/v1/conversations/:id/messages — send message
+- GET /api/v1/conversations/:id/messages — paginated message history
+- POST /api/v1/conversations/:id/members — add member (admin only)
+- GET /api/v1/events/:id/groups — public groups linked to an event
+
+**Realtime**: Supabase Realtime subscription on `messages` filtered by `conversation_id` (same pattern as comments).
+
+**Frontend pages/components:**
+- `/messages` — inbox: list of all conversations, last message preview
+- `/messages/:id` — chat view with realtime message stream + send box
+- User profile click → "Message" button starts DM
+- EventDetailPanel → "Groups" section shows public groups for that event with join button
+- New group: modal to set name, pick event (optional), public/private, invite members
+
+### P2: Phase 2 feature roadmap (in priority order)
+1. UI/style overhaul (in progress)
+2. Collections — save events + see saved/commented (in progress)
+3. Chat & group chat — Instagram-style DMs + group chats (see P2: Chat spec below)
+4. Plan a Day Trip — multi-event itinerary builder (see P2: Day Trip spec below)
+5. Mobile app
+
+### P2: Day Trip Planner Spec
+
+**Flow:**
+1. User picks a date → map shows only events on that day
+2. User clicks events to add them to their trip itinerary ("+Add to Trip" button in event detail panel)
+3. Itinerary panel shows events ordered by start time with a Mapbox Directions route drawn between them on the map
+4. User can reorder, remove events, name the trip
+5. Save trip → stored in DB, shareable via link or group chat
+
+**Route rendering:** Mapbox Directions API (client-side, public token) — draws a polyline between event coordinates in order. Mode: driving by default, toggle to walking.
+
+**Sharing:** Each saved trip gets a public URL `/trip/:id`. Can be sent as a message in group chat.
+
+**Data model:**
+```
+trips               — id, user_id, name, date, is_public, created_at, updated_at
+trip_events         — id, trip_id, event_id, position (integer order), note (optional)
+```
+
+**API routes:**
+- POST /api/v1/trips — create trip
+- GET /api/v1/trips/:id — get trip (public if is_public)
+- PUT /api/v1/trips/:id — update name/date/is_public
+- DELETE /api/v1/trips/:id — delete
+- POST /api/v1/trips/:id/events — add event to trip
+- DELETE /api/v1/trips/:id/events/:event_id — remove event
+- PUT /api/v1/trips/:id/events/reorder — update positions
+- GET /api/v1/me/trips — list user's trips
+
+**Frontend:**
+- Day Trip mode toggle in navbar/map — activates date picker, filters map to that day
+- "Add to Trip" button in EventDetailPanel (only visible in trip mode)
+- TripPanel — slide-in right panel showing itinerary, reorder handle, route stats (total distance/time)
+- `/trip/:id` — public shareable trip view
+- `/my-trips` — user's saved trips list

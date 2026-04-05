@@ -39,6 +39,20 @@ export default function UserAvatar() {
               )}
             </div>
             <a
+              href="/messages"
+              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              onClick={() => setMenuOpen(false)}
+            >
+              Messages
+            </a>
+            <a
+              href="/collections"
+              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+              onClick={() => setMenuOpen(false)}
+            >
+              Collections
+            </a>
+            <a
               href="/my-submissions"
               className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
               onClick={() => setMenuOpen(false)}

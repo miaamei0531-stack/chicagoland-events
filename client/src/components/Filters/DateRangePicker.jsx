@@ -10,31 +10,31 @@ export default function DateRangePicker() {
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Date Range</span>
+        <span className="text-xs font-semibold theme-muted uppercase tracking-widest">Date Range</span>
         {(startDate || endDate) && (
-          <button onClick={clear} className="text-xs text-blue-500 hover:text-blue-700">
+          <button onClick={clear} className="text-xs theme-faint hover:theme-muted transition-colors">
             Clear
           </button>
         )}
       </div>
       <div className="space-y-1.5">
         <div>
-          <label className="text-xs text-gray-400 mb-0.5 block">From</label>
+          <label className="text-xs theme-faint mb-0.5 block">From</label>
           <input
             type="date"
             value={startDate || ''}
             onChange={handleStart}
-            className="w-full text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-400"
+            className="w-full text-xs rounded-xl border theme-input px-2.5 py-1.5 transition-colors"
           />
         </div>
         <div>
-          <label className="text-xs text-gray-400 mb-0.5 block">To</label>
+          <label className="text-xs theme-faint mb-0.5 block">To</label>
           <input
             type="date"
             value={endDate || ''}
             onChange={handleEnd}
             min={startDate || ''}
-            className="w-full text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:border-blue-400"
+            className="w-full text-xs rounded-xl border theme-input px-2.5 py-1.5 transition-colors"
           />
         </div>
       </div>

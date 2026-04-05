@@ -72,4 +72,22 @@ router.post('/geocode', checkAuth, async (req, res) => {
   }
 });
 
+// GET /api/v1/auth/users/search?q=...
+// Search users by display_name for adding to conversations
+router.get('/users/search', checkAuth, async (req, res) => {
+  const { q } = req.query;
+  if (!q?.trim()) return res.json([]);
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('id, display_name, avatar_url')
+    .ilike('display_name', `%${q.trim()}%`)
+    .neq('id', req.user.id)
+    .eq('is_banned', false)
+    .limit(10);
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
 module.exports = router;

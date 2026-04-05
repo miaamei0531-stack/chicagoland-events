@@ -3,16 +3,15 @@ import { ALL_CATEGORIES, CATEGORY_COLORS } from '../../utils/categoryColors.js';
 
 export default function CategoryFilter() {
   const { categories, toggleCategory, setCategories } = useFiltersStore();
-  const allSelected = categories.length === 0;
 
   return (
     <div>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Category</span>
+        <span className="text-xs font-semibold theme-muted uppercase tracking-widest">Category</span>
         {categories.length > 0 && (
           <button
             onClick={() => setCategories([])}
-            className="text-xs text-blue-500 hover:text-blue-700"
+            className="text-xs theme-faint hover:theme-muted transition-colors"
           >
             Clear
           </button>
@@ -25,10 +24,10 @@ export default function CategoryFilter() {
             <button
               key={cat}
               onClick={() => toggleCategory(cat)}
-              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-colors ${
+              className={`text-xs px-2.5 py-1 rounded-full border font-medium transition-all duration-150 ${
                 active
-                  ? `${CATEGORY_COLORS[cat]} border-transparent`
-                  : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
+                  ? `${CATEGORY_COLORS[cat]} border-transparent shadow-sm`
+                  : 'theme-surface2 theme-muted border-[var(--border-subtle)] hover:border-[var(--accent)]'
               }`}
             >
               {cat}

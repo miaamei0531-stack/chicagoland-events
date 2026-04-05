@@ -11,4 +11,20 @@ export const CATEGORY_COLORS = {
   Workshops: 'bg-cyan-100 text-cyan-700',
 };
 
+// Hex colors for Mapbox marker layers
+export const CATEGORY_HEX = {
+  Food:             '#f97316', // orange
+  Sightseeing:      '#0ea5e9', // sky blue
+  Festivals:        '#ec4899', // pink
+  'Farmers Market': '#22c55e', // green
+  Nightlife:        '#6366f1', // indigo
+  Music:            '#8b5cf6', // violet
+  Arts:             '#f43f5e', // rose
+  'Family-Friendly':'#eab308', // yellow
+  Classes:          '#14b8a6', // teal
+  Workshops:        '#06b6d4', // cyan
+};
+
 export const ALL_CATEGORIES = Object.keys(CATEGORY_COLORS);
+
+export const DEFAULT_HEX = '#94a3b8'; // slate-400 fallback
