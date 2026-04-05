@@ -10,7 +10,7 @@ export default function BottomNav() {
   const inactive = 'theme-faint';
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-40 theme-surface border-t theme-border-s flex items-center justify-around pb-safe">
+    <nav style={{ position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 9999, background: 'red', display: 'flex', alignItems: 'center', justifyContent: 'space-around', padding: '8px 0' }}>
       <NavLink to="/" end className={({ isActive }) => `${base} ${isActive && !tripMode ? active : inactive}`}>
         <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={1.8} viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" />
