@@ -1,13 +1,9 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useTripStore } from '../../store/trip.js';
-import { useAuth } from '../../hooks/useAuth.js';
 
 export default function BottomNav() {
-  const { user } = useAuth();
   const { tripMode, setTripMode, reset: resetTrip } = useTripStore();
   const navigate = useNavigate();
-
-  if (!user) return null;
 
   const base = 'flex flex-col items-center gap-0.5 px-3 py-2 text-[10px] font-medium transition-colors';
   const active = 'text-[var(--accent)]';
