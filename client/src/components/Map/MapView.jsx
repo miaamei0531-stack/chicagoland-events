@@ -72,11 +72,19 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
       if (searchQuery) params.q = searchQuery;
       if (neighborhood) params.neighborhood = neighborhood;
       if (radius) {
-        params.radius = radius;
-        // Use neighborhood center as radius origin; fall back to map viewport center
         const nbCenter = neighborhood ? NEIGHBORHOOD_CENTERS[neighborhood] : null;
-        params.radius_lat = nbCenter ? nbCenter.lat : (b.getNorth() + b.getSouth()) / 2;
-        params.radius_lng = nbCenter ? nbCenter.lng : (b.getEast() + b.getWest()) / 2;
+        const cLat = nbCenter ? nbCenter.lat : (b.getNorth() + b.getSouth()) / 2;
+        const cLng = nbCenter ? nbCenter.lng : (b.getEast() + b.getWest()) / 2;
+        params.radius = radius;
+        params.radius_lat = cLat;
+        params.radius_lng = cLng;
+        // Expand bounds to fully cover the radius circle so the RPC returns all candidates
+        const degLat = radius / 111;
+        const degLng = radius / (111 * Math.cos(cLat * Math.PI / 180));
+        params.north = Math.max(b.getNorth(), cLat + degLat);
+        params.south = Math.min(b.getSouth(), cLat - degLat);
+        params.east  = Math.max(b.getEast(),  cLng + degLng);
+        params.west  = Math.min(b.getWest(),  cLng - degLng);
       }
 
       if (tripMode && tripDate) {

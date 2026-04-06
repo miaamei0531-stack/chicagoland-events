@@ -88,13 +88,11 @@ router.get('/within-bounds', async (req, res) => {
         (e) => e.title?.toLowerCase().includes(lower) || e.description?.toLowerCase().includes(lower)
       );
     }
-    if (neighborhood) {
-      const nbLower = neighborhood.toLowerCase();
-      results = results.filter((e) => e.neighborhood?.toLowerCase().includes(nbLower));
-    }
+    // When radius is set, filter by distance from the neighborhood center (or explicit center).
+    // Neighborhood text filter is ONLY applied if there's no radius — radius is the authoritative
+    // geo filter; neighborhood drives the map center + radius origin.
     if (radius) {
       const radiusKm = parseFloat(radius);
-      // Use explicit radius center if provided (e.g. neighborhood center), else viewport center
       const centerLat = radius_lat ? parseFloat(radius_lat) : (parseFloat(north) + parseFloat(south)) / 2;
       const centerLng = radius_lng ? parseFloat(radius_lng) : (parseFloat(east) + parseFloat(west)) / 2;
       results = results.filter((e) => {
@@ -102,6 +100,10 @@ router.get('/within-bounds', async (req, res) => {
         const [lng, lat] = e.coordinates.coordinates;
         return haversineKm(centerLat, centerLng, lat, lng) <= radiusKm;
       });
+    } else if (neighborhood) {
+      // Only text-match neighborhood when no radius — many events have null/inconsistent neighborhood
+      const nbLower = neighborhood.toLowerCase();
+      results = results.filter((e) => e.neighborhood?.toLowerCase().includes(nbLower));
     }
 
     res.json(results);
