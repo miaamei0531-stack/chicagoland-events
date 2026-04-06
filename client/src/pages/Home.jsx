@@ -37,7 +37,7 @@ export default function Home() {
 
         {/* RIGHT — Events list (desktop) or Trip panel */}
         {tripMode ? (
-          <div className="hidden md:flex flex-col w-72 shrink-0">
+          <div className="hidden md:flex flex-col w-80 shrink-0">
             <TripPanel onSelectEvent={setSelectedEventId} />
           </div>
         ) : (
@@ -68,7 +68,7 @@ export default function Home() {
         </div>
 
         {/* Mobile events / trip drawer */}
-        <div className={`md:hidden fixed inset-y-0 right-0 z-30 w-72 theme-surface transform transition-transform duration-200 ${listOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className={`md:hidden fixed inset-y-0 right-0 z-30 w-80 theme-surface transform transition-transform duration-200 ${listOpen ? 'translate-x-0' : 'translate-x-full'}`}>
           {tripMode ? (
             <TripPanel onSelectEvent={(id) => { setSelectedEventId(id); setListOpen(false); }} />
           ) : (
