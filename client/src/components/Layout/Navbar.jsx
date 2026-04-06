@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import LoginButton from '../Auth/LoginButton.jsx';
 import UserAvatar from '../Auth/UserAvatar.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
@@ -9,6 +9,7 @@ export default function Navbar({ onFiltersToggle, onListToggle }) {
   const { user, profile } = useAuth();
   const { dark, toggle } = useThemeStore();
   const { tripMode, setTripMode, reset: resetTrip } = useTripStore();
+  const navigate = useNavigate();
 
   return (
     <header className="theme-surface border-b theme-border-s px-3 md:px-5 py-3 flex items-center gap-3 theme-shadow z-30 shrink-0">
@@ -33,7 +34,7 @@ export default function Navbar({ onFiltersToggle, onListToggle }) {
             to="/collections"
             className="hidden sm:block text-xs theme-muted hover:theme-text px-2.5 py-1.5 rounded-lg hover:theme-surface2 transition-colors whitespace-nowrap"
           >
-            Collections
+            Saved
           </Link>
           <Link
             to="/my-submissions"
@@ -45,7 +46,7 @@ export default function Navbar({ onFiltersToggle, onListToggle }) {
             to="/my-trips"
             className="hidden sm:block text-xs theme-muted hover:theme-text px-2.5 py-1.5 rounded-lg hover:theme-surface2 transition-colors whitespace-nowrap"
           >
-            Trips
+            My Trips
           </Link>
         </>
       )}
@@ -78,7 +79,7 @@ export default function Navbar({ onFiltersToggle, onListToggle }) {
       {/* Trip mode toggle */}
       {user && (
         <button
-          onClick={() => { if (tripMode) resetTrip(); else setTripMode(true); }}
+          onClick={() => { if (tripMode) resetTrip(); else { setTripMode(true); navigate('/'); } }}
           title={tripMode ? 'Exit trip planner' : 'Plan a Day Trip'}
           className={`hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-all ${
             tripMode
