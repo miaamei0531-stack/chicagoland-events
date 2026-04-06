@@ -23,7 +23,7 @@ export default function SubmitEventButton() {
       {/* Floating button */}
       <button
         onClick={handleClick}
-        className="absolute bottom-6 left-1/2 -translate-x-1/2 md:left-4 md:translate-x-0 z-10 flex items-center gap-2 bg-community text-white font-medium text-sm px-4 py-2.5 rounded-full shadow-lg hover:bg-green-700 transition-colors"
+        className="absolute bottom-20 right-4 md:bottom-6 md:left-4 md:right-auto z-10 flex items-center gap-2 bg-community text-white font-medium text-sm px-4 py-2.5 rounded-full shadow-lg hover:bg-green-700 transition-colors"
       >
         <span className="text-lg leading-none">+</span>
         Submit Event

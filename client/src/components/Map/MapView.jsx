@@ -274,7 +274,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
       <div ref={mapContainer} className="w-full h-full" />
 
       {/* Category legend */}
-      <div className="absolute bottom-6 left-3 z-10 theme-surface rounded-2xl theme-shadow p-2.5 border theme-border-s max-w-[170px]">
+      <div className="absolute bottom-20 md:bottom-6 left-3 z-10 theme-surface rounded-2xl theme-shadow p-2.5 border theme-border-s max-w-[170px]">
         <p className="text-[10px] font-semibold theme-muted uppercase tracking-widest mb-1.5 px-0.5">Categories</p>
         <div className="space-y-1">
           {ALL_CATEGORIES.map((cat) => (
