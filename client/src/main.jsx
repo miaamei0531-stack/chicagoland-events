@@ -5,7 +5,8 @@ import App from './App.jsx';
 import './index.css';
 
 // Clean up leftover # fragment from Supabase OAuth redirect
-if (window.location.hash === '#') {
+// Supabase leaves bare # after processing access_token from hash
+if (window.location.hash === '#' || window.location.hash === '') {
   window.history.replaceState(null, '', window.location.pathname + window.location.search);
 }
 
