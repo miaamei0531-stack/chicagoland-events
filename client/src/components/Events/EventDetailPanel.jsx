@@ -43,8 +43,12 @@ export default function EventDetailPanel({ eventId, onClose }) {
 
   async function toggleSave() {
     if (!savingToken) return;
-    const { saved: newState } = await api.toggleSave(eventId, savingToken);
-    setSaved(newState);
+    try {
+      const { saved: newState } = await api.toggleSave(eventId, savingToken);
+      setSaved(newState);
+    } catch (e) {
+      console.error('Save failed:', e);
+    }
   }
 
   async function toggleTrip() {
