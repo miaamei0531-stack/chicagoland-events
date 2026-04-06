@@ -117,7 +117,26 @@ export default function MySubmissions() {
                   id: s.id,
                   initialData: {
                     title: s.title || '',
+                    description: s.description || '',
+                    category: s.category || [],
                     start_datetime: s.start_datetime || '',
+                    end_datetime: s.end_datetime || '',
+                    is_recurring: s.is_recurring || false,
+                    recurrence_rule: s.recurrence_rule || '',
+                    venue_name: s.venue_name || '',
+                    address: s.address || '',
+                    coordinates: s.coordinates?.coordinates
+                      ? `POINT(${s.coordinates.coordinates[0]} ${s.coordinates.coordinates[1]})`
+                      : null,
+                    coords_preview: s.coordinates?.coordinates
+                      ? { lng: s.coordinates.coordinates[0], lat: s.coordinates.coordinates[1] }
+                      : null,
+                    is_free: s.is_free ?? true,
+                    price_min: s.price_min != null ? String(s.price_min) : '',
+                    price_max: s.price_max != null ? String(s.price_max) : '',
+                    price_notes: s.price_notes || '',
+                    official_url: s.official_url || '',
+                    contact_email: s.contact_email || '',
                   },
                 })
               }
