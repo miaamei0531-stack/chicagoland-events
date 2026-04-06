@@ -9,6 +9,8 @@ import Messages from './pages/Messages.jsx';
 import ChatView from './components/Messaging/ChatView.jsx';
 import TripView from './pages/TripView.jsx';
 import MyTrips from './pages/MyTrips.jsx';
+import Profile from './pages/Profile.jsx';
+import BlockList from './pages/BlockList.jsx';
 import BottomNav from './components/Layout/BottomNav.jsx';
 
 export default function App() {
@@ -29,6 +31,9 @@ export default function App() {
         </Route>
         <Route path="/trip/:id" element={<TripView />} />
         <Route path="/my-trips" element={<MyTrips />} />
+        <Route path="/profile/me" element={<Profile />} />
+        <Route path="/profile/:userId" element={<Profile />} />
+        <Route path="/settings/blocks" element={<BlockList />} />
         <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
       <BottomNav />

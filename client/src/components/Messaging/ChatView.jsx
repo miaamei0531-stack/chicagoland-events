@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../services/supabase.js';
 import { api } from '../../services/api.js';
 import { useMessages } from '../../hooks/useMessages.js';
@@ -48,6 +48,7 @@ function MessageBubble({ msg, isMe }) {
 
 export default function ChatView() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [token, setToken] = useState(null);
   const [myId, setMyId] = useState(null);
   const [conv, setConv] = useState(null);
@@ -55,6 +56,7 @@ export default function ChatView() {
   const [sending, setSending] = useState(false);
   const [showAddMember, setShowAddMember] = useState(false);
   const [showMembers, setShowMembers] = useState(false);
+  const [showDmMenu, setShowDmMenu] = useState(false);
   const bottomRef = useRef(null);
 
   const { messages, loading } = useMessages(id, token);
@@ -82,11 +84,39 @@ export default function ChatView() {
     try {
       await api.sendMessage(id, text.trim(), token);
       setText('');
+      // If it was locked, refresh conv to see if it's now unlocked
+      if (conv?.is_locked) {
+        const updated = await api.getConversation(id, token);
+        setConv(updated);
+      }
     } catch (err) {
-      alert('Failed to send: ' + err.message);
+      if (err.message.includes('403')) {
+        setConv((c) => c ? { ...c, is_locked: true } : c);
+      } else {
+        alert('Failed to send: ' + err.message);
+      }
     } finally {
       setSending(false);
     }
+  }
+
+  async function blockOtherUser() {
+    const other = conv?.members?.find((m) => m.user?.id !== myId);
+    if (!other) return;
+    if (!window.confirm(`Block ${other.user?.display_name}?`)) return;
+    await api.blockUser(other.user.id, token);
+    setShowDmMenu(false);
+    navigate('/messages');
+  }
+
+  async function reportOtherUser() {
+    const other = conv?.members?.find((m) => m.user?.id !== myId);
+    if (!other) return;
+    const reason = window.prompt('Reason for reporting (optional):');
+    if (reason === null) return; // cancelled
+    await api.reportUser(other.user.id, reason, token);
+    setShowDmMenu(false);
+    alert('Report submitted. Thank you.');
   }
 
   function getConvName() {
@@ -105,26 +135,38 @@ export default function ChatView() {
       <div className="theme-surface border-b theme-border-s px-4 py-3 flex items-center gap-3 shrink-0">
         <Link to="/messages" className="theme-faint hover:theme-text text-lg leading-none mr-1">←</Link>
         <div className="flex-1 min-w-0">
-          <h2 className="font-semibold theme-text truncate">{getConvName()}</h2>
-          {conv?.is_group && (
+          {!conv?.is_group ? (
             <button
-              onClick={() => setShowMembers((v) => !v)}
-              className="text-xs theme-muted hover:theme-text"
+              onClick={() => { const other = conv?.members?.find((m) => m.user?.id !== myId); if (other) navigate(`/profile/${other.user.id}`); }}
+              className="font-semibold theme-text truncate hover:text-[var(--accent)] transition-colors block text-left"
             >
+              {getConvName()}
+            </button>
+          ) : (
+            <h2 className="font-semibold theme-text truncate">{getConvName()}</h2>
+          )}
+          {conv?.is_group && (
+            <button onClick={() => setShowMembers((v) => !v)} className="text-xs theme-muted hover:theme-text">
               {conv.members?.length || 0} members
             </button>
           )}
-          {conv?.event && (
-            <p className="text-xs theme-faint truncate">re: {conv.event.title}</p>
-          )}
+          {conv?.event && <p className="text-xs theme-faint truncate">re: {conv.event.title}</p>}
         </div>
         {isAdmin && conv?.is_group && (
-          <button
-            onClick={() => setShowAddMember(true)}
-            className="text-xs px-3 py-1.5 rounded-full border theme-border-s theme-surface2 theme-muted hover:text-[var(--accent)] transition-colors"
-          >
+          <button onClick={() => setShowAddMember(true)} className="text-xs px-3 py-1.5 rounded-full border theme-border-s theme-surface2 theme-muted hover:text-[var(--accent)] transition-colors">
             + Add
           </button>
+        )}
+        {!conv?.is_group && (
+          <div className="relative">
+            <button onClick={() => setShowDmMenu((v) => !v)} className="theme-faint hover:theme-text text-lg px-1">⋯</button>
+            {showDmMenu && (
+              <div className="absolute right-0 top-8 theme-surface border theme-border-s rounded-xl shadow-lg z-10 overflow-hidden min-w-[120px]">
+                <button onClick={blockOtherUser} className="w-full px-4 py-2.5 text-sm text-left theme-text hover:theme-surface2 transition-colors">Block</button>
+                <button onClick={reportOtherUser} className="w-full px-4 py-2.5 text-sm text-left text-red-500 hover:theme-surface2 transition-colors">Report</button>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
@@ -157,19 +199,27 @@ export default function ChatView() {
         <div ref={bottomRef} />
       </div>
 
+      {/* Locked banner */}
+      {conv?.is_locked && (
+        <div className="px-4 py-2.5 bg-amber-50 dark:bg-amber-900/20 border-t border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400 text-center shrink-0">
+          You've sent your intro message. Once {getConvName()} replies, the conversation will unlock.
+        </div>
+      )}
+
       {/* Send box */}
       <form onSubmit={handleSend} className="theme-surface border-t theme-border-s px-4 py-3 flex gap-2 shrink-0">
         <input
           type="text"
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Message…"
-          className="flex-1 px-4 py-2 text-sm rounded-2xl border theme-input"
+          placeholder={conv?.is_locked ? 'Waiting for reply…' : 'Message…'}
+          disabled={conv?.is_locked}
+          className="flex-1 px-4 py-2 text-sm rounded-2xl border theme-input disabled:opacity-40 disabled:cursor-not-allowed"
           autoComplete="off"
         />
         <button
           type="submit"
-          disabled={!text.trim() || sending}
+          disabled={!text.trim() || sending || conv?.is_locked}
           className="px-4 py-2 rounded-2xl text-sm font-medium text-white theme-btn-accent disabled:opacity-40 transition-all"
         >
           Send

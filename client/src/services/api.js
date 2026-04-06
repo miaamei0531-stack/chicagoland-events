@@ -71,6 +71,16 @@ export const api = {
   checkSaved: (eventId, token) => request(`/events/${eventId}/saved`, { headers: { Authorization: `Bearer ${token}` } }),
   getCollections: (token) => request('/me/collections', { headers: { Authorization: `Bearer ${token}` } }),
 
+  // User profiles + safety
+  getProfile: (userId, token) => request(`/users/${userId}`, token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
+  updateProfile: (body, token) => request('/users/me', { method: 'PUT', body: JSON.stringify(body), headers: { Authorization: `Bearer ${token}` } }),
+  blockUser: (userId, token) => request(`/users/${userId}/block`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }),
+  unblockUser: (userId, token) => request(`/users/${userId}/block`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } }),
+  getMyBlocks: (token) => request('/users/me/blocks', { headers: { Authorization: `Bearer ${token}` } }),
+  reportUser: (userId, reason, token) => request(`/users/${userId}/report`, { method: 'POST', body: JSON.stringify({ reason }), headers: { Authorization: `Bearer ${token}` } }),
+  getAdminUserReports: (token) => request('/admin/user-reports', { headers: { Authorization: `Bearer ${token}` } }),
+  reviewUserReport: (id, token) => request(`/admin/user-reports/${id}/review`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } }),
+
   // Admin
   getAdminSubmissions: (token) => request('/admin/submissions', { headers: { Authorization: `Bearer ${token}` } }),
   getAdminAllSubmissions: (token, status) => request(`/admin/submissions/all${status ? `?status=${status}` : ''}`, { headers: { Authorization: `Bearer ${token}` } }),

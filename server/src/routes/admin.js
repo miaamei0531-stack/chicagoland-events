@@ -184,4 +184,31 @@ router.post('/users/:id/ban', async (req, res) => {
   res.json({ ok: true });
 });
 
+// GET /api/v1/admin/user-reports — unreviewed user reports
+router.get('/user-reports', async (req, res) => {
+  const { data, error } = await supabase
+    .from('user_reports')
+    .select(`
+      id, reason, created_at,
+      reporter:users!reporter_id(id, display_name),
+      reported:users!reported_id(id, display_name, is_banned)
+    `)
+    .eq('reviewed', false)
+    .order('created_at', { ascending: false });
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json(data);
+});
+
+// POST /api/v1/admin/user-reports/:id/review
+router.post('/user-reports/:id/review', async (req, res) => {
+  const { error } = await supabase
+    .from('user_reports')
+    .update({ reviewed: true })
+    .eq('id', req.params.id);
+
+  if (error) return res.status(500).json({ error: error.message });
+  res.json({ ok: true });
+});
+
 module.exports = router;

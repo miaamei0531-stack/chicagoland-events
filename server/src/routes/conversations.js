@@ -139,7 +139,32 @@ router.get('/:id', async (req, res) => {
     .single();
 
   if (error || !data) return res.status(404).json({ error: 'Conversation not found' });
-  res.json({ ...data, my_role: membership.role });
+
+  // Compute is_locked for DMs
+  let is_locked = false;
+  if (!data.is_group) {
+    const otherId = data.members?.find((m) => m.user?.id !== req.user.id)?.user?.id;
+    if (otherId) {
+      const { count: otherCount } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('conversation_id', req.params.id)
+        .eq('sender_id', otherId)
+        .eq('is_deleted', false);
+
+      if (!otherCount) {
+        const { count: myCount } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('conversation_id', req.params.id)
+          .eq('sender_id', req.user.id)
+          .eq('is_deleted', false);
+        is_locked = myCount >= 1;
+      }
+    }
+  }
+
+  res.json({ ...data, my_role: membership.role, is_locked });
 });
 
 // ── GET /api/v1/conversations/:id/messages ────────────────────
@@ -185,6 +210,49 @@ router.post('/:id/messages', async (req, res) => {
     .single();
 
   if (!membership) return res.status(403).json({ error: 'Not a member' });
+
+  // DM-only safety checks
+  const { data: conv } = await supabase
+    .from('conversations')
+    .select('is_group, conversation_members(user_id)')
+    .eq('id', req.params.id)
+    .single();
+
+  if (conv && !conv.is_group) {
+    const otherId = conv.conversation_members?.find((m) => m.user_id !== req.user.id)?.user_id;
+
+    if (otherId) {
+      // Block check
+      const { data: block } = await supabase
+        .from('user_blocks')
+        .select('blocker_id')
+        .or(`and(blocker_id.eq.${req.user.id},blocked_id.eq.${otherId}),and(blocker_id.eq.${otherId},blocked_id.eq.${req.user.id})`)
+        .limit(1);
+      if (block?.length) return res.status(403).json({ error: 'blocked' });
+
+      // 1-message limit: has the other person ever replied?
+      const { count: otherCount } = await supabase
+        .from('messages')
+        .select('*', { count: 'exact', head: true })
+        .eq('conversation_id', req.params.id)
+        .eq('sender_id', otherId)
+        .eq('is_deleted', false);
+
+      if (!otherCount) {
+        // Other person hasn't replied — count how many I've already sent
+        const { count: myCount } = await supabase
+          .from('messages')
+          .select('*', { count: 'exact', head: true })
+          .eq('conversation_id', req.params.id)
+          .eq('sender_id', req.user.id)
+          .eq('is_deleted', false);
+
+        if (myCount >= 1) {
+          return res.status(403).json({ error: 'awaiting_reply', locked: true });
+        }
+      }
+    }
+  }
 
   const { data, error } = await supabase
     .from('messages')

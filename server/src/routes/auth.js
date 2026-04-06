@@ -78,7 +78,17 @@ router.get('/users/search', checkAuth, async (req, res) => {
   const { q } = req.query;
   if (!q?.trim()) return res.json([]);
 
-  const { data, error } = await supabase
+  // Get block lists in both directions
+  const { data: blocks } = await supabase
+    .from('user_blocks')
+    .select('blocker_id, blocked_id')
+    .or(`blocker_id.eq.${req.user.id},blocked_id.eq.${req.user.id}`);
+
+  const blockedIds = (blocks || []).map((b) =>
+    b.blocker_id === req.user.id ? b.blocked_id : b.blocker_id
+  );
+
+  let query = supabase
     .from('users')
     .select('id, display_name, avatar_url')
     .ilike('display_name', `%${q.trim()}%`)
@@ -86,6 +96,9 @@ router.get('/users/search', checkAuth, async (req, res) => {
     .eq('is_banned', false)
     .limit(10);
 
+  if (blockedIds.length) query = query.not('id', 'in', `(${blockedIds.join(',')})`);
+
+  const { data, error } = await query;
   if (error) return res.status(500).json({ error: error.message });
   res.json(data);
 });

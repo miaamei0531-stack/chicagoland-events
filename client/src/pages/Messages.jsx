@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link, Outlet, useNavigate, useParams } from 'react-router-dom';
+import { Link, Outlet, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { supabase } from '../services/supabase.js';
 import { api } from '../services/api.js';
 import NewConversationModal from '../components/Messaging/NewConversationModal.jsx';
@@ -60,6 +60,7 @@ function ConvItem({ conv, myId, active }) {
 export default function Messages() {
   const { id: activeId } = useParams();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [session, setSession] = useState(undefined);
   const [convs, setConvs] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -69,6 +70,16 @@ export default function Messages() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (!session) return;
+
+      // Handle ?dm=userId — open or create a DM immediately
+      const dmUserId = searchParams.get('dm');
+      if (dmUserId) {
+        api.createConversation({ member_ids: [dmUserId] }, session.access_token)
+          .then(({ id }) => navigate(`/messages/${id}`, { replace: true }))
+          .catch(console.error);
+        return;
+      }
+
       api.getConversations(session.access_token)
         .then(setConvs)
         .catch(console.error)
