@@ -30,6 +30,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
   const mapContainer = useRef(null);
   const map = useRef(null);
   const boundsTimer = useRef(null);
+  const featuresRef = useRef([]); // store loaded features for flyTo lookups
   const { categories, startDate, endDate, searchQuery } = useFiltersStore();
   const dark = useThemeStore((s) => s.dark);
   const { tripMode, tripDate, tripEvents, routeMode } = useTripStore();
@@ -83,6 +84,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
         });
       });
 
+      featuresRef.current = geojson.features;
       if (map.current.getSource('events')) {
         map.current.getSource('events').setData(geojson);
       }
@@ -231,12 +233,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
   // Fly to + pulse-highlight selected event
   useEffect(() => {
     if (!map.current || !selectedEventId) return;
-    const source = map.current.getSource('events');
-    if (!source) return;
-
-    // Find the feature in the current GeoJSON
-    const data = source._data;
-    const feature = data?.features?.find((f) => f.properties?.id === selectedEventId);
+    const feature = featuresRef.current.find((f) => f.properties?.id === selectedEventId);
     if (!feature) return;
 
     const [lng, lat] = feature.geometry.coordinates;
