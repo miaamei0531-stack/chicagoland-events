@@ -12,7 +12,7 @@ router.get('/events/:id/comments', async (req, res) => {
     let query = supabase
       .from('comments')
       .select(`
-        id, body, type, reported_count, is_deleted, created_at, updated_at,
+        id, body, type, reply_to_name, reported_count, is_deleted, created_at, updated_at,
         user:users(id, display_name, avatar_url)
       `)
       .eq('event_id', req.params.id)
@@ -40,7 +40,7 @@ router.get('/events/:id/comments', async (req, res) => {
 // POST /api/v1/events/:id/comments
 router.post('/events/:id/comments', checkAuth, async (req, res) => {
   try {
-    const { body, type = 'general' } = req.body;
+    const { body, type = 'general', reply_to_name } = req.body;
 
     if (!body?.trim()) {
       return res.status(400).json({ error: 'Comment body is required' });
@@ -67,9 +67,10 @@ router.post('/events/:id/comments', checkAuth, async (req, res) => {
         user_id: req.user.id,
         body: body.trim(),
         type,
+        reply_to_name: reply_to_name || null,
       })
       .select(`
-        id, body, type, reported_count, is_deleted, created_at, updated_at,
+        id, body, type, reply_to_name, reported_count, is_deleted, created_at, updated_at,
         user:users(id, display_name, avatar_url)
       `)
       .single();

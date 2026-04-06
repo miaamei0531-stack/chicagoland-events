@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth.js';
 import { supabase } from '../../services/supabase.js';
 import { api } from '../../services/api.js';
@@ -12,19 +12,25 @@ const TYPES = [
   { value: 'question', label: 'Question' },
 ];
 
-export default function CommentForm({ eventId, onPosted }) {
+export default function CommentForm({ eventId, onPosted, replyTo, onCancelReply }) {
   const { user } = useAuth();
   const [body, setBody] = useState('');
   const [type, setType] = useState('general');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState(null);
+  const textareaRef = useRef(null);
+
+  // Focus textarea when replying
+  useEffect(() => {
+    if (replyTo) textareaRef.current?.focus();
+  }, [replyTo]);
 
   if (!user) {
     return (
-      <div className="bg-gray-50 rounded-lg p-3 text-center text-sm text-gray-500">
+      <div className="theme-surface2 rounded-xl p-3 text-center text-sm theme-faint border theme-border-s">
         <button
           onClick={() => supabase.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: window.location.origin } })}
-          className="text-blue-500 hover:underline"
+          className="text-[var(--accent)] hover:underline"
         >
           Sign in
         </button>{' '}
@@ -41,7 +47,11 @@ export default function CommentForm({ eventId, onPosted }) {
     setError(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      await api.createComment(eventId, { body, type }, session?.access_token);
+      await api.createComment(eventId, {
+        body,
+        type,
+        reply_to_name: replyTo?.display_name || null,
+      }, session?.access_token);
       setBody('');
       setType('general');
       onPosted?.();
@@ -56,6 +66,14 @@ export default function CommentForm({ eventId, onPosted }) {
     <form onSubmit={handleSubmit} className="space-y-2">
       {error && <p className="text-xs text-red-500">{error}</p>}
 
+      {/* Reply-to banner */}
+      {replyTo && (
+        <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-[var(--accent)]/10 border border-[var(--accent)]/20">
+          <span className="text-xs text-[var(--accent)]">↩ Replying to <strong>{replyTo.display_name}</strong></span>
+          <button type="button" onClick={onCancelReply} className="text-xs text-[var(--accent)] hover:opacity-70 ml-2">✕</button>
+        </div>
+      )}
+
       {/* Type selector */}
       <div className="flex flex-wrap gap-1.5">
         {TYPES.map((t) => (
@@ -66,9 +84,8 @@ export default function CommentForm({ eventId, onPosted }) {
             className={`text-xs px-2 py-1 rounded-full border transition-colors ${
               type === t.value
                 ? 'border-transparent'
-                : 'bg-white border-gray-200 text-gray-400 hover:border-gray-300'
+                : 'theme-surface border-[var(--border-subtle)] theme-faint hover:theme-muted'
             }`}
-            style={type === t.value ? {} : {}}
           >
             {type === t.value ? <CommentBadge type={t.value} /> : t.label}
           </button>
@@ -76,11 +93,12 @@ export default function CommentForm({ eventId, onPosted }) {
       </div>
 
       <textarea
+        ref={textareaRef}
         value={body}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="Add a comment..."
+        placeholder={replyTo ? `Reply to ${replyTo.display_name}…` : 'Add a comment…'}
         rows={3}
-        className="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:border-blue-400 resize-none"
+        className="w-full text-sm theme-surface2 border theme-border-s rounded-xl px-3 py-2 focus:outline-none focus:border-[var(--accent)] resize-none theme-text"
       />
 
       <button
@@ -88,7 +106,7 @@ export default function CommentForm({ eventId, onPosted }) {
         disabled={submitting || !body.trim()}
         className="w-full bg-official text-white text-sm font-medium py-2 rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
-        {submitting ? 'Posting...' : 'Post Comment'}
+        {submitting ? 'Posting…' : replyTo ? `Reply to ${replyTo.display_name}` : 'Post Comment'}
       </button>
     </form>
   );
