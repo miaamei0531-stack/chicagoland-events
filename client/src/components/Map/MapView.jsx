@@ -14,6 +14,28 @@ const DAY_STYLE = 'mapbox://styles/mapbox/light-v11';
 const DARK_STYLE = 'mapbox://styles/mapbox/dark-v11';
 const CLUSTER_COLOR = '#64748b'; // slate — neutral for mixed-category clusters
 
+// Approximate centers for each neighborhood option in FiltersPanel
+const NEIGHBORHOOD_CENTERS = {
+  'Loop':           { lat: 41.8827, lng: -87.6278 },
+  'River North':    { lat: 41.8944, lng: -87.6337 },
+  'Lincoln Park':   { lat: 41.9220, lng: -87.6447 },
+  'Wicker Park':    { lat: 41.9087, lng: -87.6796 },
+  'Bucktown':       { lat: 41.9177, lng: -87.6820 },
+  'Logan Square':   { lat: 41.9217, lng: -87.7033 },
+  'Pilsen':         { lat: 41.8534, lng: -87.6636 },
+  'Hyde Park':      { lat: 41.7943, lng: -87.5907 },
+  'Andersonville':  { lat: 41.9814, lng: -87.6683 },
+  'Lakeview':       { lat: 41.9435, lng: -87.6490 },
+  'Wrigleyville':   { lat: 41.9484, lng: -87.6553 },
+  'South Loop':     { lat: 41.8614, lng: -87.6278 },
+  'West Loop':      { lat: 41.8827, lng: -87.6490 },
+  'Evanston':       { lat: 42.0451, lng: -87.6877 },
+  'Oak Park':       { lat: 41.8850, lng: -87.7845 },
+  'Naperville':     { lat: 41.7858, lng: -88.1472 },
+  'Schaumburg':     { lat: 42.0334, lng: -88.0834 },
+  'Aurora':         { lat: 41.7606, lng: -88.3201 },
+};
+
 // Build a Mapbox match expression: ['match', ['get', 'primary_category'], cat1, hex1, cat2, hex2, ..., fallback]
 function categoryColorExpression() {
   const expr = ['match', ['get', 'primary_category']];
@@ -49,7 +71,13 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
       if (categories.length) params.category = categories;
       if (searchQuery) params.q = searchQuery;
       if (neighborhood) params.neighborhood = neighborhood;
-      if (radius) params.radius = radius;
+      if (radius) {
+        params.radius = radius;
+        // Use neighborhood center as radius origin; fall back to map viewport center
+        const nbCenter = neighborhood ? NEIGHBORHOOD_CENTERS[neighborhood] : null;
+        params.radius_lat = nbCenter ? nbCenter.lat : (b.getNorth() + b.getSouth()) / 2;
+        params.radius_lng = nbCenter ? nbCenter.lng : (b.getEast() + b.getWest()) / 2;
+      }
 
       if (tripMode && tripDate) {
         // Lock date to trip date; ignore the normal date range filters
@@ -224,6 +252,14 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
       loadEvents();
     });
   }, [dark, loadEvents]);
+
+  // Fly to neighborhood center when neighborhood filter changes
+  useEffect(() => {
+    if (!map.current || !neighborhood) return;
+    const center = NEIGHBORHOOD_CENTERS[neighborhood];
+    if (!center) return;
+    map.current.flyTo({ center: [center.lng, center.lat], zoom: 13, duration: 800 });
+  }, [neighborhood]);
 
   // Reload markers when filters or trip date/mode changes
   useEffect(() => {

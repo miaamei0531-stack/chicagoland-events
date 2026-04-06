@@ -59,7 +59,7 @@ router.get('/', async (req, res) => {
 // Params: north, south, east, west, category[], start_date, end_date, q, neighborhood, radius (km)
 router.get('/within-bounds', async (req, res) => {
   try {
-    const { north, south, east, west, category, start_date, end_date, q, neighborhood, radius } = req.query;
+    const { north, south, east, west, category, start_date, end_date, q, neighborhood, radius, radius_lat, radius_lng } = req.query;
     if (!north || !south || !east || !west) {
       return res.status(400).json({ error: 'north, south, east, west are required' });
     }
@@ -94,8 +94,9 @@ router.get('/within-bounds', async (req, res) => {
     }
     if (radius) {
       const radiusKm = parseFloat(radius);
-      const centerLat = (parseFloat(north) + parseFloat(south)) / 2;
-      const centerLng = (parseFloat(east) + parseFloat(west)) / 2;
+      // Use explicit radius center if provided (e.g. neighborhood center), else viewport center
+      const centerLat = radius_lat ? parseFloat(radius_lat) : (parseFloat(north) + parseFloat(south)) / 2;
+      const centerLng = radius_lng ? parseFloat(radius_lng) : (parseFloat(east) + parseFloat(west)) / 2;
       results = results.filter((e) => {
         if (!e.coordinates?.coordinates) return false;
         const [lng, lat] = e.coordinates.coordinates;
