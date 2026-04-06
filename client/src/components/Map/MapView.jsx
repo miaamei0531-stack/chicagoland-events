@@ -312,17 +312,13 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     <div className="relative flex-1 h-full">
       <div ref={mapContainer} className="w-full h-full" />
 
-      {/* Category legend */}
-      <div className="absolute bottom-20 md:bottom-6 left-3 z-10 theme-surface rounded-2xl theme-shadow p-2.5 border theme-border-s max-w-[170px]">
-        <p className="text-[10px] font-semibold theme-muted uppercase tracking-widest mb-1.5 px-0.5">Categories</p>
-        <div className="space-y-1">
+      {/* Category legend — top-left on mobile, hidden on desktop (shown in filters sidebar) */}
+      <div className="absolute top-3 left-3 z-10 md:hidden theme-surface rounded-2xl theme-shadow p-2 border theme-border-s">
+        <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
           {ALL_CATEGORIES.map((cat) => (
-            <div key={cat} className="flex items-center gap-1.5">
-              <span
-                className="w-2.5 h-2.5 rounded-full shrink-0"
-                style={{ backgroundColor: CATEGORY_HEX[cat] }}
-              />
-              <span className="text-[10px] theme-text leading-none">{cat}</span>
+            <div key={cat} className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_HEX[cat] }} />
+              <span className="text-[9px] theme-text leading-none">{cat}</span>
             </div>
           ))}
         </div>

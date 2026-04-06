@@ -3,6 +3,7 @@ import DateRangePicker from '../Filters/DateRangePicker.jsx';
 import SearchBar from '../Filters/SearchBar.jsx';
 import { useFiltersStore } from '../../store/filters.js';
 import { useTripStore } from '../../store/trip.js';
+import { CATEGORY_HEX, ALL_CATEGORIES } from '../../utils/categoryColors.js';
 
 export default function FiltersPanel({ open, onClose }) {
   const reset = useFiltersStore((s) => s.reset);
@@ -43,6 +44,19 @@ export default function FiltersPanel({ open, onClose }) {
         ) : (
           <DateRangePicker />
         )}
+
+        {/* Category legend — desktop only */}
+        <div className="hidden md:block pt-2 border-t theme-border-s">
+          <p className="text-xs font-semibold theme-muted uppercase tracking-widest mb-2">Map Legend</p>
+          <div className="space-y-1">
+            {ALL_CATEGORIES.map((cat) => (
+              <div key={cat} className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: CATEGORY_HEX[cat] }} />
+                <span className="text-xs theme-text">{cat}</span>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
