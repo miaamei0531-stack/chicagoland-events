@@ -45,7 +45,7 @@ export default function Navbar({ onFiltersToggle, onListToggle }) {
             to="/my-trips"
             className="hidden sm:block text-xs theme-muted hover:theme-text px-2.5 py-1.5 rounded-lg hover:theme-surface2 transition-colors whitespace-nowrap"
           >
-            My Trips
+            Trips
           </Link>
         </>
       )}

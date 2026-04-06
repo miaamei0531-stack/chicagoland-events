@@ -2,11 +2,20 @@ const router = require('express').Router();
 const supabase = require('../services/supabase');
 const { attachCoords } = require('../utils/parseCoordinates');
 
+function haversineKm(lat1, lng1, lat2, lng2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 // GET /api/v1/events
-// Params: category[], start_date, end_date, q, lat, lng, radius_km, limit, offset
+// Params: category[], start_date, end_date, q, neighborhood, radius, lat, lng, radius_km, limit, offset
 router.get('/', async (req, res) => {
   try {
-    const { category, start_date, end_date, q, lat, lng, radius_km, limit = 100, offset = 0 } = req.query;
+    const { category, start_date, end_date, q, neighborhood, radius, lat, lng, radius_km, limit = 100, offset = 0 } = req.query;
 
     // Radius search — use PostGIS ST_DWithin via RPC
     if (lat && lng && radius_km) {
@@ -34,6 +43,7 @@ router.get('/', async (req, res) => {
     if (start_date) query = query.gte('start_datetime', start_date);
     if (end_date) query = query.lte('start_datetime', end_date);
     if (q) query = query.ilike('title', `%${q}%`);
+    if (neighborhood) query = query.ilike('neighborhood', `%${neighborhood}%`);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -46,10 +56,10 @@ router.get('/', async (req, res) => {
 });
 
 // GET /api/v1/events/within-bounds  (must be before /:id)
-// Params: north, south, east, west, category[], start_date, end_date, q
+// Params: north, south, east, west, category[], start_date, end_date, q, neighborhood, radius (km)
 router.get('/within-bounds', async (req, res) => {
   try {
-    const { north, south, east, west, category, start_date, end_date, q } = req.query;
+    const { north, south, east, west, category, start_date, end_date, q, neighborhood, radius } = req.query;
     if (!north || !south || !east || !west) {
       return res.status(400).json({ error: 'north, south, east, west are required' });
     }
@@ -63,8 +73,9 @@ router.get('/within-bounds', async (req, res) => {
 
     if (error) throw error;
 
-    // Apply filters in JS after spatial query (simpler than a second RPC)
-    let results = data;
+    // Parse coordinates first so we can do radius filtering
+    let results = data.map(attachCoords);
+
     if (category) {
       const cats = Array.isArray(category) ? category : [category];
       results = results.filter((e) => e.category?.some((c) => cats.includes(c)));
@@ -77,8 +88,22 @@ router.get('/within-bounds', async (req, res) => {
         (e) => e.title?.toLowerCase().includes(lower) || e.description?.toLowerCase().includes(lower)
       );
     }
+    if (neighborhood) {
+      const nbLower = neighborhood.toLowerCase();
+      results = results.filter((e) => e.neighborhood?.toLowerCase().includes(nbLower));
+    }
+    if (radius) {
+      const radiusKm = parseFloat(radius);
+      const centerLat = (parseFloat(north) + parseFloat(south)) / 2;
+      const centerLng = (parseFloat(east) + parseFloat(west)) / 2;
+      results = results.filter((e) => {
+        if (!e.coordinates?.coordinates) return false;
+        const [lng, lat] = e.coordinates.coordinates;
+        return haversineKm(centerLat, centerLng, lat, lng) <= radiusKm;
+      });
+    }
 
-    res.json(results.map(attachCoords));
+    res.json(results);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch events within bounds' });

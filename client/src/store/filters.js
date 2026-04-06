@@ -5,6 +5,8 @@ export const useFiltersStore = create((set) => ({
   startDate: null,
   endDate: null,
   searchQuery: '',
+  neighborhood: '',
+  radius: null, // km, null = no radius filter
 
   setCategories: (categories) => set({ categories }),
   toggleCategory: (cat) =>
@@ -15,5 +17,7 @@ export const useFiltersStore = create((set) => ({
     })),
   setDateRange: (startDate, endDate) => set({ startDate, endDate }),
   setSearchQuery: (searchQuery) => set({ searchQuery }),
-  reset: () => set({ categories: [], startDate: null, endDate: null, searchQuery: '' }),
+  setNeighborhood: (neighborhood) => set({ neighborhood }),
+  setRadius: (radius) => set({ radius }),
+  reset: () => set({ categories: [], startDate: null, endDate: null, searchQuery: '', neighborhood: '', radius: null }),
 }));

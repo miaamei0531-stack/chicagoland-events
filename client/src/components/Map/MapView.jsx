@@ -31,7 +31,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
   const map = useRef(null);
   const boundsTimer = useRef(null);
   const featuresRef = useRef([]); // store loaded features for flyTo lookups
-  const { categories, startDate, endDate, searchQuery } = useFiltersStore();
+  const { categories, startDate, endDate, searchQuery, neighborhood, radius } = useFiltersStore();
   const dark = useThemeStore((s) => s.dark);
   const { tripMode, tripDate, tripEvents, routeMode } = useTripStore();
 
@@ -45,9 +45,11 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
         east: b.getEast(),
         west: b.getWest(),
       };
-      // Always apply category/search filters
+      // Always apply category/search/neighborhood/radius filters
       if (categories.length) params.category = categories;
       if (searchQuery) params.q = searchQuery;
+      if (neighborhood) params.neighborhood = neighborhood;
+      if (radius) params.radius = radius;
 
       if (tripMode && tripDate) {
         // Lock date to trip date; ignore the normal date range filters
@@ -91,7 +93,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     } catch (err) {
       console.error('Failed to load events:', err);
     }
-  }, [tripMode, tripDate, categories, startDate, endDate, searchQuery]);
+  }, [tripMode, tripDate, categories, startDate, endDate, searchQuery, neighborhood, radius]);
 
   function addSourcesAndLayers() {
     if (map.current.getSource('events')) return; // already added
@@ -228,7 +230,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     if (!map.current) return;
     clearTimeout(boundsTimer.current);
     boundsTimer.current = setTimeout(loadEvents, 300);
-  }, [categories, startDate, endDate, searchQuery, tripMode, tripDate, loadEvents]);
+  }, [categories, startDate, endDate, searchQuery, neighborhood, radius, tripMode, tripDate, loadEvents]);
 
   // Fly to + pulse-highlight selected event
   useEffect(() => {

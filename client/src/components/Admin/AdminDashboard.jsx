@@ -7,6 +7,7 @@ const TABS = [
   { id: 'pending', label: 'Pending Submissions' },
   { id: 'flagged', label: 'Flagged Events' },
   { id: 'comments', label: 'Reported Comments' },
+  { id: 'user-reports', label: 'User Reports' },
   { id: 'all', label: 'All Submissions' },
 ];
 
@@ -121,6 +122,71 @@ function FlaggedTab({ token }) {
   );
 }
 
+// ── User Reports Tab ───────────────────────────────────────────────────────
+function UserReportsTab({ token }) {
+  const [reports, setReports] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    api.getAdminUserReports(token)
+      .then(setReports)
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [token]);
+
+  async function handleReview(id) {
+    await api.reviewUserReport(id, token);
+    setReports((prev) => prev.filter((r) => r.id !== id));
+  }
+
+  async function handleBan(userId, reportId) {
+    if (!window.confirm('Ban this user? This cannot be undone.')) return;
+    await api.banUser(userId, token);
+    await api.reviewUserReport(reportId, token);
+    setReports((prev) => prev.filter((r) => r.id !== reportId));
+  }
+
+  if (loading) return <div className="text-gray-500 py-8 text-center">Loading…</div>;
+  if (!reports.length) return (
+    <div className="py-12 text-center text-gray-400">
+      <div className="text-4xl mb-2">✅</div>
+      <p>No unreviewed user reports.</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      <p className="text-sm text-gray-500">{reports.length} unreviewed report{reports.length !== 1 ? 's' : ''}</p>
+      {reports.map((r) => (
+        <div key={r.id} className="bg-white border border-red-100 rounded-xl p-4 shadow-sm space-y-2">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-medium text-gray-900">
+                <span className="text-red-500">{r.reporter?.display_name}</span>
+                {' reported '}
+                <span className="text-gray-800">{r.reported?.display_name}</span>
+                {r.reported?.is_banned && <span className="ml-2 text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">Banned</span>}
+              </p>
+              {r.reason && <p className="text-sm text-gray-600 mt-1 italic">"{r.reason}"</p>}
+              <p className="text-xs text-gray-400 mt-1">{formatDate(r.created_at)}</p>
+            </div>
+          </div>
+          <div className="flex gap-2 pt-1">
+            <button onClick={() => handleReview(r.id)} className="px-3 py-1.5 text-xs rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50">
+              Dismiss
+            </button>
+            {!r.reported?.is_banned && (
+              <button onClick={() => handleBan(r.reported_id || r.reported?.id, r.id)} className="px-3 py-1.5 text-xs rounded-lg bg-red-500 text-white hover:bg-red-600">
+                Ban User
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── All Submissions Tab ────────────────────────────────────────────────────
 function AllSubmissionsTab({ token }) {
   const [items, setItems] = useState([]);
@@ -227,6 +293,7 @@ export default function AdminDashboard({ token }) {
       {activeTab === 'pending' && <PendingTab token={token} />}
       {activeTab === 'flagged' && <FlaggedTab token={token} />}
       {activeTab === 'comments' && <ReportedComments token={token} />}
+      {activeTab === 'user-reports' && <UserReportsTab token={token} />}
       {activeTab === 'all' && <AllSubmissionsTab token={token} />}
     </div>
   );
