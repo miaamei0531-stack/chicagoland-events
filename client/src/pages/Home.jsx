@@ -33,7 +33,6 @@ export default function Home() {
             selectedEventId={selectedEventId}
             onSelectEvent={setSelectedEventId}
           />
-          {!tripMode && <SubmitEventButton />}
         </div>
 
         {/* RIGHT — Events list (desktop) or Trip panel */}
@@ -43,6 +42,11 @@ export default function Home() {
           </div>
         ) : (
           <div className="hidden md:flex flex-col w-72 shrink-0 theme-surface border-l theme-border-s overflow-hidden">
+            {!tripMode && (
+              <div className="px-3 pt-3 shrink-0">
+                <SubmitEventButton inline />
+              </div>
+            )}
             <EventList
               onSelectEvent={setSelectedEventId}
               selectedEventId={selectedEventId}
@@ -68,11 +72,16 @@ export default function Home() {
           {tripMode ? (
             <TripPanel onSelectEvent={(id) => { setSelectedEventId(id); setListOpen(false); }} />
           ) : (
-            <EventList
-              onSelectEvent={(id) => { setSelectedEventId(id); setListOpen(false); }}
-              selectedEventId={selectedEventId}
-              onClose={() => setListOpen(false)}
-            />
+            <>
+              <div className="px-3 pt-3 shrink-0">
+                <SubmitEventButton inline />
+              </div>
+              <EventList
+                onSelectEvent={(id) => { setSelectedEventId(id); setListOpen(false); }}
+                selectedEventId={selectedEventId}
+                onClose={() => setListOpen(false)}
+              />
+            </>
           )}
         </div>
       </div>

@@ -3,7 +3,7 @@ import { useAuth } from '../../hooks/useAuth.js';
 import { supabase } from '../../services/supabase.js';
 import SubmitEventForm from './SubmitEventForm.jsx';
 
-export default function SubmitEventButton() {
+export default function SubmitEventButton({ inline = false }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(false);
 
@@ -20,10 +20,13 @@ export default function SubmitEventButton() {
 
   return (
     <>
-      {/* Floating button */}
       <button
         onClick={handleClick}
-        className="absolute bottom-24 right-4 md:bottom-6 md:left-4 md:right-auto z-10 flex items-center gap-2 bg-community text-white font-medium text-sm px-4 py-2.5 rounded-full shadow-lg hover:bg-green-700 transition-colors"
+        className={
+          inline
+            ? 'w-full flex items-center justify-center gap-2 bg-community text-white font-medium text-sm px-4 py-2.5 rounded-xl hover:bg-green-700 transition-colors mb-1'
+            : 'hidden'
+        }
       >
         <span className="text-lg leading-none">+</span>
         Submit Event
@@ -31,7 +34,7 @@ export default function SubmitEventButton() {
 
       {/* Slide-in form panel */}
       {open && (
-        <div className="absolute top-0 right-0 h-full w-full md:w-96 bg-white shadow-xl z-20 flex flex-col">
+        <div className="fixed top-0 right-0 h-full w-full md:w-96 bg-white shadow-xl z-50 flex flex-col">
           <SubmitEventForm onClose={() => setOpen(false)} />
         </div>
       )}
