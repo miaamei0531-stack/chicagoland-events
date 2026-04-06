@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { useEvents } from '../../hooks/useEvents.js';
 import EventCard from './EventCard.jsx';
 
@@ -15,8 +16,15 @@ function CardSkeleton() {
   );
 }
 
-export default function EventList({ onSelectEvent, onClose }) {
+export default function EventList({ onSelectEvent, onClose, selectedEventId }) {
   const { events, loading, error } = useEvents();
+  const selectedRef = useRef(null);
+
+  useEffect(() => {
+    if (selectedEventId && selectedRef.current) {
+      selectedRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }, [selectedEventId]);
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden theme-surface border-l theme-border-s">
@@ -49,11 +57,16 @@ export default function EventList({ onSelectEvent, onClose }) {
           <p className="text-sm theme-faint text-center py-6">No events in this area.</p>
         )}
         {!loading && events.map((event) => (
-          <EventCard
+          <div
             key={event.id}
-            event={event}
-            onClick={(id) => { onSelectEvent(id); onClose?.(); }}
-          />
+            ref={selectedEventId === event.id ? selectedRef : null}
+            className={`rounded-2xl transition-all ${selectedEventId === event.id ? 'ring-2 ring-[var(--accent)]' : ''}`}
+          >
+            <EventCard
+              event={event}
+              onClick={(id) => { onSelectEvent(id); onClose?.(); }}
+            />
+          </div>
         ))}
       </div>
     </div>

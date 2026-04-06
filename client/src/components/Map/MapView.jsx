@@ -228,6 +228,45 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     boundsTimer.current = setTimeout(loadEvents, 300);
   }, [categories, startDate, endDate, searchQuery, tripMode, tripDate, loadEvents]);
 
+  // Fly to + pulse-highlight selected event
+  useEffect(() => {
+    if (!map.current || !selectedEventId) return;
+    const source = map.current.getSource('events');
+    if (!source) return;
+
+    // Find the feature in the current GeoJSON
+    const data = source._data;
+    const feature = data?.features?.find((f) => f.properties?.id === selectedEventId);
+    if (!feature) return;
+
+    const [lng, lat] = feature.geometry.coordinates;
+
+    map.current.flyTo({ center: [lng, lat], zoom: Math.max(map.current.getZoom(), 14), duration: 600 });
+
+    // Add a temporary pulse layer
+    const pulseId = 'selected-pulse';
+    if (map.current.getLayer(pulseId)) map.current.removeLayer(pulseId);
+    if (map.current.getSource(pulseId)) map.current.removeSource(pulseId);
+
+    map.current.addSource(pulseId, {
+      type: 'geojson',
+      data: { type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] } },
+    });
+    map.current.addLayer({
+      id: pulseId,
+      type: 'circle',
+      source: pulseId,
+      paint: {
+        'circle-radius': 18,
+        'circle-color': 'var(--accent, #d4a843)',
+        'circle-opacity': 0.35,
+        'circle-stroke-width': 2,
+        'circle-stroke-color': 'var(--accent, #d4a843)',
+        'circle-stroke-opacity': 0.8,
+      },
+    }, 'event-unclustered-glow');
+  }, [selectedEventId]);
+
   // Draw Directions route when trip events change
   useEffect(() => {
     if (!map.current) return;

@@ -21,7 +21,13 @@ export default function Home() {
       />
 
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Map */}
+
+        {/* LEFT — Filters sidebar (desktop only) */}
+        <div className="hidden md:flex flex-col w-64 shrink-0 theme-surface border-r theme-border-s overflow-y-auto">
+          <FiltersPanel open={true} onClose={() => {}} />
+        </div>
+
+        {/* CENTER — Map */}
         <div className="flex-1 relative">
           <MapView
             selectedEventId={selectedEventId}
@@ -30,36 +36,45 @@ export default function Home() {
           {!tripMode && <SubmitEventButton />}
         </div>
 
-        {/* Right panel */}
-        <div className={`
-          fixed md:static inset-y-0 right-0 z-30 md:z-auto
-          flex flex-col w-80
-          transform transition-transform duration-200 ease-in-out
-          ${listOpen || filtersOpen || tripMode ? 'translate-x-0' : 'translate-x-full md:translate-x-0'}
-        `}>
-          {tripMode ? (
-            <>
-              <FiltersPanel open={true} onClose={() => {}} />
-              <TripPanel onSelectEvent={setSelectedEventId} />
-            </>
-          ) : (
-            <>
-              <FiltersPanel open={filtersOpen} onClose={() => setFiltersOpen(false)} />
-              <EventList
-                onSelectEvent={(id) => { setSelectedEventId(id); setListOpen(false); }}
-                onClose={() => setListOpen(false)}
-              />
-            </>
-          )}
-        </div>
+        {/* RIGHT — Events list (desktop) or Trip panel */}
+        {tripMode ? (
+          <div className="hidden md:flex flex-col w-72 shrink-0">
+            <TripPanel onSelectEvent={setSelectedEventId} />
+          </div>
+        ) : (
+          <div className="hidden md:flex flex-col w-72 shrink-0 theme-surface border-l theme-border-s overflow-hidden">
+            <EventList
+              onSelectEvent={setSelectedEventId}
+              selectedEventId={selectedEventId}
+            />
+          </div>
+        )}
 
-        {/* Mobile backdrop */}
-        {(filtersOpen || listOpen) && !tripMode && (
+        {/* Mobile slide-in panels */}
+        {(filtersOpen || listOpen || (tripMode && (filtersOpen || listOpen))) && (
           <div
             className="fixed inset-0 bg-black/30 z-20 md:hidden"
             onClick={() => { setFiltersOpen(false); setListOpen(false); }}
           />
         )}
+
+        {/* Mobile filters drawer */}
+        <div className={`md:hidden fixed inset-y-0 left-0 z-30 w-72 theme-surface transform transition-transform duration-200 ${filtersOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <FiltersPanel open={true} onClose={() => setFiltersOpen(false)} />
+        </div>
+
+        {/* Mobile events / trip drawer */}
+        <div className={`md:hidden fixed inset-y-0 right-0 z-30 w-72 theme-surface transform transition-transform duration-200 ${listOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+          {tripMode ? (
+            <TripPanel onSelectEvent={(id) => { setSelectedEventId(id); setListOpen(false); }} />
+          ) : (
+            <EventList
+              onSelectEvent={(id) => { setSelectedEventId(id); setListOpen(false); }}
+              selectedEventId={selectedEventId}
+              onClose={() => setListOpen(false)}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
