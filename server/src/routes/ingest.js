@@ -7,12 +7,12 @@
  */
 
 const router = require('express').Router();
-const eventbrite = require('../ingestion/eventbrite');
+const ticketmaster = require('../ingestion/ticketmaster');
 const chicagoOpenData = require('../ingestion/chicago-open-data');
 
-router.post('/eventbrite', async (req, res) => {
+router.post('/ticketmaster', async (req, res) => {
   try {
-    const summary = await eventbrite();
+    const summary = await ticketmaster();
     res.json({ ok: true, ...summary });
   } catch (err) {
     console.error(err);
