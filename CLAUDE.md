@@ -127,14 +127,16 @@ CREATE INDEX ON events USING GIN (category);               -- array filtering
 
 ### Source Tiers
 
-| Priority | Source | Method | Refresh Rate |
-|---|---|---|---|
-| 1 — Primary | Eventbrite API | Official REST API — free, structured JSON | Every 6 hours |
-| 2 — Primary | Chicago Open Data Portal | data.cityofchicago.org — Socrata API | Daily |
-| 3 — Primary | Ticketmaster API | Free Discovery API | Every 12 hours |
-| 4 — Secondary | iCal / RSS Feeds | Parse .ics from Chicago Park District, local venues | Daily |
-| 5 — Manual | Admin Entry | Admin dashboard form | On demand |
-| 6 — Last Resort | Web Scraping | Playwright; check robots.txt; rate limit 1 req/3 sec | Every 2–3 days |
+| Priority | Source | Method | Refresh Rate | Covers |
+|---|---|---|---|---|
+| 1 — Primary | **Ticketmaster API** | Free Discovery API | Every 6 hours | Concerts, sports, theater, major ticketed events |
+| 2 — Primary | **PredictHQ API** | Aggregator (19+ sources incl. Eventbrite, Facebook Events) | Every 12 hours | Community events, classes, workshops, festivals, grassroots |
+| 3 — Primary | **Chicago Open Data Portal** | data.cityofchicago.org — Socrata API | Daily | Park permits, street fairs, marathons, outdoor events |
+| 4 — Secondary | iCal / RSS Feeds | Parse .ics from Chicago Park District, local venues | Daily | Park programs |
+| 5 — Manual | Admin Entry | Admin dashboard form | On demand | One-off events |
+| 6 — Last Resort | Web Scraping | Playwright; check robots.txt; rate limit 1 req/3 sec | Every 2–3 days | Sources with no API |
+
+> **Eventbrite API deprecated (2023)** — their public discovery API returns 404 for all requests. Replaced by PredictHQ which aggregates Eventbrite data plus 18 other sources.
 
 ### Ingestion Pipeline (per source)
 1. Fetch raw data
@@ -323,10 +325,12 @@ Food, Sightseeing, Festivals, Farmers Market, Nightlife, Music, Arts, Family-Fri
 - [ ] Draw-area polygon filter (ST_Within) — deferred to post-MVP
 
 ### M5 — External Data Ingestion (Week 3) ✅
-- [x] Eventbrite ingestion script + upsert pattern
-- [x] node-cron schedule (Eventbrite every 6h, Open Data daily 3am)
-- [x] Chicago Open Data ingestion script
-- [x] Manual trigger routes: POST /api/v1/ingest/eventbrite, POST /api/v1/ingest/chicago-open-data
+- [x] Ticketmaster ingestion script + upsert pattern (replaced deprecated Eventbrite)
+- [x] PredictHQ ingestion script (aggregates 19+ sources — community, classes, workshops, festivals)
+- [x] Chicago Open Data ingestion script (park permits, geocoded via Mapbox)
+- [x] node-cron schedule (Ticketmaster every 6h, PredictHQ every 12h, Open Data daily 3am)
+- [x] Startup ingestion — all workers run immediately on server boot
+- [x] Manual trigger routes: POST /api/v1/ingest/ticketmaster, POST /api/v1/ingest/predicthq, POST /api/v1/ingest/chicago-open-data
 
 ### M6 — Authentication (Week 4) ✅
 - [x] Supabase Google OAuth
@@ -377,8 +381,8 @@ Food, Sightseeing, Festivals, Farmers Market, Nightlife, Music, Arts, Family-Fri
 |---|---|
 | SUPABASE_URL | Supabase → Settings → API |
 | SUPABASE_SERVICE_KEY | Supabase → Settings → API → service_role (never expose to client) |
-| EVENTBRITE_API_KEY | eventbrite.com/platform → API Keys |
-| TICKETMASTER_API_KEY | developer.ticketmaster.com → My Apps |
+| TICKETMASTER_API_KEY | developer.ticketmaster.com → My Apps (free) |
+| PREDICTHQ_API_KEY | predicthq.com → API Credentials (free tier: 100 req/day) |
 | OPENAI_API_KEY | platform.openai.com → API Keys (for free Moderation API only) |
 | MAPBOX_SECRET_TOKEN | mapbox.com → Tokens → Create secret token (server-side geocoding proxy) |
 | PORT | 3001 locally; Railway sets automatically in prod |
@@ -435,14 +439,24 @@ The `events_within_bounds` RPC does the spatial filter in PostGIS (fast). Catego
 ### M5: Upsert pattern — hash-based change detection
 Each ingested event gets a `content_hash = MD5(title + start_datetime + address)`. On re-ingest: if hash unchanged → skip (no DB write); if hash changed → update; if new → insert. This makes all workers idempotent — safe to run repeatedly. Logic lives in `server/src/ingestion/upsert.js` shared by all workers.
 
-### M5: Category mapping for Eventbrite
-Eventbrite has its own category taxonomy. We map their categories to our 10 categories in `CATEGORY_MAP` inside `eventbrite.js`. Unmapped categories are dropped. Can be expanded as new Eventbrite categories are encountered.
+### M5: Eventbrite API deprecated — replaced by Ticketmaster + PredictHQ
+Eventbrite's public discovery API was deprecated in 2023 and returns 404 for all search requests. Replaced with:
+- **Ticketmaster** (`ticketmaster.js`): Free Discovery API, great for concerts/sports/theater. Maps segment+genre to our 10 categories. Fetches 90 days of events within 50mi of Chicago, up to 1000 events per run.
+- **PredictHQ** (`predicthq.js`): Event intelligence aggregator that pulls from Eventbrite, Facebook Events, and 17+ other sources. Covers the grassroots/community gap — classes, workshops, neighborhood events, festivals. Free tier: 100 req/day; we use 2 requests per run. Requires `PREDICTHQ_API_KEY` env var.
 
-### M5: Chicago Open Data — category inferred from event name
-The Socrata dataset has no category field. We infer category by keyword-matching the event name (e.g. "market" → Farmers Market, "festival" → Festivals). Logic in `guessCategory()` in `chicago-open-data.js`. All permitted public events default to `is_free: true`.
+### M5: Category mapping
+- Ticketmaster: maps `segment` + `genre` + `subGenre` to our 10 categories in `CATEGORY_MAP` inside `ticketmaster.js`
+- PredictHQ: maps their category slugs (community, concerts, festivals, performing-arts, etc.) in `predicthq.js`
+- Chicago Open Data: infers category by keyword-matching event name in `guessCategory()`. All park permit events default to `is_free: true`.
+
+### M5: Chicago Open Data — geocoded via Mapbox
+Park permit dataset has no coordinates. Each park address is geocoded via the Mapbox server-side token. Falls back to Chicago center if geocoding fails. Requires `MAPBOX_SECRET_TOKEN` env var.
 
 ### M5: Manual trigger routes for testing
-`POST /api/v1/ingest/eventbrite` and `POST /api/v1/ingest/chicago-open-data` run workers immediately without waiting for cron. Use these during development to test ingestion. Remove or protect with `checkAdmin` before production.
+`POST /api/v1/ingest/ticketmaster`, `POST /api/v1/ingest/predicthq`, `POST /api/v1/ingest/chicago-open-data` run workers immediately. Protect with `checkAdmin` before production.
+
+### M5: Startup ingestion
+All three workers run immediately when the server boots (`runAll()` in `scheduler.start()`). Data is always fresh after a Railway deploy without waiting for the next cron window.
 
 ### M6: User sync via POST /auth/sync (no JWT required)
 The client calls `POST /auth/sync` immediately after login, passing the Supabase user fields (id, email, display_name, avatar_url). This endpoint does NOT require a JWT — the data comes from Supabase Auth directly and the user ID is trusted. This avoids a chicken-and-egg problem where the user record doesn't exist yet when the JWT middleware tries to look it up.
@@ -450,8 +464,8 @@ The client calls `POST /auth/sync` immediately after login, passing the Supabase
 ### M6: Profile stored in two places
 `user` (from `useAuth`) = Supabase Auth user object (has `user_metadata.avatar_url`, `email`, etc.). `profile` = our `users` table row (has `is_admin`, `is_banned`, `submission_count`). Both are returned by `useAuth`. Components should use `profile.is_admin` to gate admin features, not `user`.
 
-### M5: Ticketmaster deferred
-Ticketmaster ingestion not built in M5 — Eventbrite + Chicago Open Data covers launch needs. Can add in a later sprint using the same upsert pattern.
+### M5: Ticketmaster ✅ built
+Ticketmaster Discovery API replaces Eventbrite. Free tier, no key approval needed. Fetches concerts, sports, theater within 50mi of Chicago over the next 90 days.
 
 ### M4: Draw-area polygon filter deferred
 Mapbox Draw plugin (`@mapbox/mapbox-gl-draw`) deferred to post-MVP. Adds meaningful complexity (install, UI toggle, polygon state) for a feature users can approximate with zoom + radius filter. Will revisit for Phase 2.

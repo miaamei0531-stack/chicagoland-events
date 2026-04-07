@@ -7,9 +7,11 @@
 const cron = require('node-cron');
 const ticketmaster = require('./ticketmaster');
 const chicagoOpenData = require('./chicago-open-data');
+const predicthq = require('./predicthq');
 
 async function runAll() {
   try { await ticketmaster(); } catch (err) { console.error('[scheduler] Ticketmaster failed:', err.message); }
+  try { await predicthq(); } catch (err) { console.error('[scheduler] PredictHQ failed:', err.message); }
   try { await chicagoOpenData(); } catch (err) { console.error('[scheduler] Chicago Open Data failed:', err.message); }
 }
 
@@ -25,6 +27,13 @@ function start() {
     catch (err) { console.error('[scheduler] Ticketmaster failed:', err.message); }
   });
 
+  // PredictHQ — every 12 hours (free tier: 100 req/day)
+  cron.schedule('0 */12 * * *', async () => {
+    console.log('[scheduler] Running PredictHQ ingestion...');
+    try { await predicthq(); }
+    catch (err) { console.error('[scheduler] PredictHQ failed:', err.message); }
+  });
+
   // Chicago Open Data — daily at 3am
   cron.schedule('0 3 * * *', async () => {
     console.log('[scheduler] Running Chicago Open Data ingestion...');
@@ -32,7 +41,7 @@ function start() {
     catch (err) { console.error('[scheduler] Chicago Open Data failed:', err.message); }
   });
 
-  console.log('[scheduler] Cron jobs registered. Ticketmaster=every 6h, OpenData=daily 3am');
+  console.log('[scheduler] Cron jobs registered. Ticketmaster=every 6h, PredictHQ=every 12h, OpenData=daily 3am');
 }
 
 module.exports = { start };

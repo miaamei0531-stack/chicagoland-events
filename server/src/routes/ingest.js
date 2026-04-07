@@ -9,6 +9,7 @@
 const router = require('express').Router();
 const ticketmaster = require('../ingestion/ticketmaster');
 const chicagoOpenData = require('../ingestion/chicago-open-data');
+const predicthq = require('../ingestion/predicthq');
 
 router.post('/ticketmaster', async (req, res) => {
   try {
@@ -23,6 +24,16 @@ router.post('/ticketmaster', async (req, res) => {
 router.post('/chicago-open-data', async (req, res) => {
   try {
     const summary = await chicagoOpenData();
+    res.json({ ok: true, ...summary });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.post('/predicthq', async (req, res) => {
+  try {
+    const summary = await predicthq();
     res.json({ ok: true, ...summary });
   } catch (err) {
     console.error(err);
