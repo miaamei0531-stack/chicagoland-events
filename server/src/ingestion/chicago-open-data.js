@@ -10,9 +10,28 @@ const { upsertEvents } = require('./upsert');
 
 const DATASET_URL = 'https://data.cityofchicago.org/resource/pk66-w54g.json';
 
-// Chicago neighborhoods → rough coordinates for events missing geocoding
-// (Most records include lat/lng; this is a fallback)
 const CHICAGO_CENTER = { lat: 41.8781, lng: -87.6298 };
+
+// Geocode an address using the Mapbox API (server-side secret token)
+async function geocodeAddress(address) {
+  const token = process.env.MAPBOX_SECRET_TOKEN;
+  if (!token || !address) return null;
+  try {
+    const encoded = encodeURIComponent(address);
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?country=US&proximity=-87.6298,41.8781&limit=1&access_token=${token}`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const feature = data.features?.[0];
+    if (!feature) return null;
+    const [lng, lat] = feature.center;
+    // Only accept coords within Chicagoland bounding box
+    if (lat < 41 || lat > 43 || lng < -89 || lng > -87) return null;
+    return { lat, lng };
+  } catch {
+    return null;
+  }
+}
 
 function guessCategory(eventName = '') {
   const name = eventName.toLowerCase();
@@ -26,16 +45,19 @@ function guessCategory(eventName = '') {
   return ['Sightseeing'];
 }
 
-function normalizeEvent(row) {
+async function normalizeEvent(row) {
   // Actual columns: requestor_, organization, park_number, park_facility_name,
   // reservation_start_date, reservation_end_date, event_type, event_description, permit_status
   const title = row.organization || row.event_type || row.requestor_;
   if (!title || !row.reservation_start_date) return null;
 
-  // This dataset doesn't include coordinates — use Chicago center as fallback
-  // Events will cluster at center; real geocoding added in M9 verification service
-  const lat = CHICAGO_CENTER.lat;
-  const lng = CHICAGO_CENTER.lng;
+  // Geocode the park address; fall back to Chicago center
+  const addressStr = row.park_facility_name
+    ? `${row.park_facility_name}, Chicago, IL`
+    : 'Chicago, IL';
+  const geo = await geocodeAddress(addressStr);
+  const lat = geo?.lat ?? CHICAGO_CENTER.lat;
+  const lng = geo?.lng ?? CHICAGO_CENTER.lng;
 
   const parseDate = (d) => {
     if (!d) return null;
@@ -102,7 +124,7 @@ async function ingest() {
   const rows = await fetchEvents();
   console.log(`[chicago-open-data] Fetched ${rows.length} records`);
 
-  const normalized = rows.map(normalizeEvent).filter(Boolean);
+  const normalized = (await Promise.all(rows.map(normalizeEvent))).filter(Boolean);
   console.log(`[chicago-open-data] ${normalized.length} valid events. Upserting...`);
 
   const summary = await upsertEvents(normalized);

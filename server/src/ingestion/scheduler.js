@@ -8,7 +8,16 @@ const cron = require('node-cron');
 const eventbrite = require('./eventbrite');
 const chicagoOpenData = require('./chicago-open-data');
 
+async function runAll() {
+  try { await eventbrite(); } catch (err) { console.error('[scheduler] Eventbrite failed:', err.message); }
+  try { await chicagoOpenData(); } catch (err) { console.error('[scheduler] Chicago Open Data failed:', err.message); }
+}
+
 function start() {
+  // Run immediately on startup so data is fresh after each deploy
+  console.log('[scheduler] Running initial ingestion on startup...');
+  runAll();
+
   // Eventbrite — every 6 hours
   cron.schedule('0 */6 * * *', async () => {
     console.log('[scheduler] Running Eventbrite ingestion...');

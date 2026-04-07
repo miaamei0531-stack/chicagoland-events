@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Navbar from '../components/Layout/Navbar.jsx';
 import MapView from '../components/Map/MapView.jsx';
 import FiltersPanel from '../components/Layout/FiltersPanel.jsx';
@@ -12,6 +12,11 @@ export default function Home() {
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
   const tripMode = useTripStore((s) => s.tripMode);
+
+  // Auto-open the right drawer when trip mode is activated on mobile
+  useEffect(() => {
+    if (tripMode) setListOpen(true);
+  }, [tripMode]);
 
   return (
     <div className="flex flex-col h-screen theme-bg pb-14 md:pb-0">
@@ -63,12 +68,12 @@ export default function Home() {
         )}
 
         {/* Mobile filters drawer */}
-        <div className={`md:hidden fixed inset-y-0 left-0 z-30 w-72 theme-surface transform transition-transform duration-200 ${filtersOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className={`md:hidden fixed inset-y-0 left-0 z-30 w-72 theme-surface flex flex-col overflow-hidden transform transition-transform duration-200 ${filtersOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <FiltersPanel open={true} onClose={() => setFiltersOpen(false)} />
         </div>
 
         {/* Mobile events / trip drawer */}
-        <div className={`md:hidden fixed inset-y-0 right-0 z-30 w-80 theme-surface transform transition-transform duration-200 ${listOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        <div className={`md:hidden fixed inset-y-0 right-0 z-30 w-80 theme-surface flex flex-col overflow-hidden transform transition-transform duration-200 ${listOpen ? 'translate-x-0' : 'translate-x-full'}`}>
           {tripMode ? (
             <TripPanel onSelectEvent={(id) => { setSelectedEventId(id); setListOpen(false); }} />
           ) : (
