@@ -56,18 +56,13 @@ export default function Navbar({ onFiltersToggle, onListToggle }) {
         </button>
       </div>
 
-      {/* Trip mode toggle */}
+      {/* Plan a Day CTA */}
       {user && (
         <button
-          onClick={() => { if (tripMode) resetTrip(); else { setTripMode(true); navigate('/'); } }}
-          title={tripMode ? 'Exit trip planner' : 'Plan a Day Trip'}
-          className={`hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-all ${
-            tripMode
-              ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
-              : 'theme-surface2 theme-muted border-[var(--border-subtle)] hover:border-[var(--accent)]'
-          }`}
+          onClick={() => navigate('/plan')}
+          className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-all theme-surface2 theme-muted border-[var(--border-subtle)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
         >
-          🗺️ {tripMode ? 'Exit Trip' : 'Plan Trip'}
+          ✨ Plan a Day
         </button>
       )}
 

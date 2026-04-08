@@ -53,6 +53,13 @@ export const api = {
   // Recommendations (auth required)
   getRecommendations: (date, token) => request(`/recommendations?date=${date}`, { headers: { Authorization: `Bearer ${token}` } }),
 
+  // Itinerary
+  buildItinerary: (body, token) => request('/itinerary/build', { method: 'POST', body: JSON.stringify(body), headers: { Authorization: `Bearer ${token}` } }),
+  getMyItineraries: (token) => request('/itinerary/mine', { headers: { Authorization: `Bearer ${token}` } }),
+  saveItinerary: (body, token) => request('/itinerary', { method: 'POST', body: JSON.stringify(body), headers: { Authorization: `Bearer ${token}` } }),
+  updateItinerary: (id, body, token) => request(`/itinerary/${id}`, { method: 'PUT', body: JSON.stringify(body), headers: { Authorization: `Bearer ${token}` } }),
+  getSharedItinerary: (token) => request(`/itinerary/share/${token}`),
+
   // Trips
   getTrip: (id, token) => request(`/trips/${id}`, token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
   getMyTrips: (token) => request('/trips/me/list', { headers: { Authorization: `Bearer ${token}` } }),

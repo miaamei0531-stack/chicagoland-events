@@ -13,6 +13,8 @@ import MyTrips from './pages/MyTrips.jsx';
 import Profile from './pages/Profile.jsx';
 import BlockList from './pages/BlockList.jsx';
 import Preferences from './pages/Preferences.jsx';
+import Plan from './pages/Plan.jsx';
+import PlanShare from './pages/PlanShare.jsx';
 import BottomNav from './components/Layout/BottomNav.jsx';
 import OnboardingModal from './components/Onboarding/OnboardingModal.jsx';
 
@@ -47,6 +49,8 @@ export default function App() {
         <Route path="/profile/:userId" element={<Profile />} />
         <Route path="/settings/blocks" element={<BlockList />} />
         <Route path="/preferences" element={<Preferences />} />
+        <Route path="/plan" element={<Plan />} />
+        <Route path="/plan/share/:token" element={<PlanShare />} />
         <Route path="/admin" element={<AdminDashboard />} />
       </Routes>
       <BottomNav />
