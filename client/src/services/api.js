@@ -50,6 +50,9 @@ export const api = {
   // Weather (public)
   getWeather: (params = {}) => request(`/weather?${toQueryString(params)}`),
 
+  // Recommendations (auth required)
+  getRecommendations: (date, token) => request(`/recommendations?date=${date}`, { headers: { Authorization: `Bearer ${token}` } }),
+
   // Trips
   getTrip: (id, token) => request(`/trips/${id}`, token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
   getMyTrips: (token) => request('/trips/me/list', { headers: { Authorization: `Bearer ${token}` } }),
