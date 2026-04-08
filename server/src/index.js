@@ -35,6 +35,7 @@ app.use('/api/v1/conversations', require('./routes/conversations'));
 app.use('/api/v1/trips', require('./routes/trips'));
 app.use('/api/v1/users', require('./routes/users'));
 app.use('/api/v1/ingest', require('./routes/ingest'));
+app.use('/api/v1/weather', require('./routes/weather'));
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

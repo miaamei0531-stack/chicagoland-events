@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { api } from '../../services/api.js';
 import { supabase } from '../../services/supabase.js';
 import SourceBadge from './SourceBadge.jsx';
+import WeatherBadge from '../Weather/WeatherBadge.jsx';
 import CommentThread from '../Community/CommentThread.jsx';
 import NewConversationModal from '../Messaging/NewConversationModal.jsx';
 import { formatDateTime } from '../../utils/formatDate.js';
@@ -124,9 +125,10 @@ export default function EventDetailPanel({ eventId, onClose }) {
 
       {!loading && event && (
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* Source badge */}
-          <div>
+          {/* Source badge + weather */}
+          <div className="flex flex-wrap items-center gap-2">
             <SourceBadge isUserSubmitted={event.is_user_submitted} />
+            <WeatherBadge event={event} />
           </div>
 
           {/* Title */}

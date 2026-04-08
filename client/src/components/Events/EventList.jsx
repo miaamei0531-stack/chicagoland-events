@@ -1,6 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { useEvents } from '../../hooks/useEvents.js';
 import EventCard from './EventCard.jsx';
+import WeatherWidget from '../Weather/WeatherWidget.jsx';
 
 function CardSkeleton() {
   return (
@@ -39,6 +40,8 @@ export default function EventList({ onSelectEvent, onClose, selectedEventId }) {
           ×
         </button>
       </div>
+
+      <WeatherWidget />
 
       <div className="flex-1 overflow-y-auto p-3 space-y-2">
         {loading && (

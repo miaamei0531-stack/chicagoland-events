@@ -47,6 +47,9 @@ export const api = {
   getPreferences: (token) => request('/auth/preferences', { headers: { Authorization: `Bearer ${token}` } }),
   savePreferences: (body, token) => request('/auth/preferences', { method: 'PUT', body: JSON.stringify(body), headers: { Authorization: `Bearer ${token}` } }),
 
+  // Weather (public)
+  getWeather: (params = {}) => request(`/weather?${toQueryString(params)}`),
+
   // Trips
   getTrip: (id, token) => request(`/trips/${id}`, token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
   getMyTrips: (token) => request('/trips/me/list', { headers: { Authorization: `Bearer ${token}` } }),
