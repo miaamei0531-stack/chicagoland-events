@@ -40,10 +40,12 @@ router.get('/', async (req, res) => {
       const cats = Array.isArray(category) ? category : [category];
       query = query.overlaps('category', cats);
     }
-    if (start_date) query = query.gte('start_datetime', start_date);
-    if (end_date) query = query.lte('start_datetime', end_date);
+    if (start_date) query = query.gte('start_datetime', `${start_date}T00:00:00.000Z`);
+    if (end_date) query = query.lte('start_datetime', `${end_date}T23:59:59.999Z`);
     if (q) query = query.ilike('title', `%${q}%`);
-    if (neighborhood) query = query.ilike('neighborhood', `%${neighborhood}%`);
+    // Only apply neighborhood text filter when no radius — radius is the geo filter;
+    // neighborhood text-match is unreliable since most ingested events have null neighborhood
+    if (neighborhood && !radius) query = query.ilike('neighborhood', `%${neighborhood}%`);
 
     const { data, error } = await query;
     if (error) throw error;
@@ -78,10 +80,19 @@ router.get('/within-bounds', async (req, res) => {
 
     if (category) {
       const cats = Array.isArray(category) ? category : [category];
-      results = results.filter((e) => e.category?.some((c) => cats.includes(c)));
+      results = results.filter((e) => {
+        const evCats = Array.isArray(e.category) ? e.category : [];
+        return evCats.some((c) => cats.includes(c));
+      });
     }
-    if (start_date) results = results.filter((e) => e.start_datetime >= start_date);
-    if (end_date) results = results.filter((e) => e.start_datetime <= end_date + 'T23:59:59Z');
+    if (start_date) {
+      const startMs = new Date(`${start_date}T00:00:00.000Z`).getTime();
+      results = results.filter((e) => e.start_datetime && new Date(e.start_datetime).getTime() >= startMs);
+    }
+    if (end_date) {
+      const endMs = new Date(`${end_date}T23:59:59.999Z`).getTime();
+      results = results.filter((e) => e.start_datetime && new Date(e.start_datetime).getTime() <= endMs);
+    }
     if (q) {
       const lower = q.toLowerCase();
       results = results.filter(

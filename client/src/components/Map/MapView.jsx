@@ -67,24 +67,30 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
         east: b.getEast(),
         west: b.getWest(),
       };
-      // Always apply category/search/neighborhood/radius filters
+      // Always apply category/search filters
       if (categories.length) params.category = categories;
       if (searchQuery) params.q = searchQuery;
-      if (neighborhood) params.neighborhood = neighborhood;
-      if (radius) {
-        const nbCenter = neighborhood ? NEIGHBORHOOD_CENTERS[neighborhood] : null;
+
+      // Neighborhood + radius: always use neighborhood center as anchor when selected.
+      // This avoids the race condition where loadEvents fires before the fly-to animation
+      // completes, causing the bounds query to use the old viewport.
+      const nbCenter = neighborhood ? NEIGHBORHOOD_CENTERS[neighborhood] : null;
+      if (nbCenter || radius) {
         const cLat = nbCenter ? nbCenter.lat : (b.getNorth() + b.getSouth()) / 2;
         const cLng = nbCenter ? nbCenter.lng : (b.getEast() + b.getWest()) / 2;
-        params.radius = radius;
-        params.radius_lat = cLat;
-        params.radius_lng = cLng;
-        // Expand bounds to fully cover the radius circle so the RPC returns all candidates
-        const degLat = radius / 111;
-        const degLng = radius / (111 * Math.cos(cLat * Math.PI / 180));
-        params.north = Math.max(b.getNorth(), cLat + degLat);
-        params.south = Math.min(b.getSouth(), cLat - degLat);
-        params.east  = Math.max(b.getEast(),  cLng + degLng);
-        params.west  = Math.min(b.getWest(),  cLng - degLng);
+        // Default radius when neighborhood is selected but no radius slider set: 5km
+        const effectiveRadius = radius || (nbCenter ? 5 : null);
+        if (effectiveRadius) {
+          params.radius = effectiveRadius;
+          params.radius_lat = cLat;
+          params.radius_lng = cLng;
+          const degLat = effectiveRadius / 111;
+          const degLng = effectiveRadius / (111 * Math.cos(cLat * Math.PI / 180));
+          params.north = Math.max(b.getNorth(), cLat + degLat);
+          params.south = Math.min(b.getSouth(), cLat - degLat);
+          params.east  = Math.max(b.getEast(),  cLng + degLng);
+          params.west  = Math.min(b.getWest(),  cLng - degLng);
+        }
       }
 
       if (tripMode && tripDate) {
