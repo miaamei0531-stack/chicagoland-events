@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const supabase = require('../services/supabase');
 const { checkAuth } = require('../middleware/auth');
+const { parseWKB } = require('../utils/parseCoordinates');
 
 // POST /api/v1/auth/sync
 // Called by the client on every login to upsert the user record
@@ -82,7 +83,15 @@ router.get('/preferences', checkAuth, async (req, res) => {
     .single();
 
   if (error) return res.status(404).json({ error: 'User not found' });
-  res.json(data);
+
+  // Parse home_location WKB → { lat, lng } for client convenience
+  let home_coords = null;
+  if (data.home_location) {
+    const parsed = parseWKB(data.home_location);
+    if (parsed) home_coords = { lat: parsed.lat, lng: parsed.lng };
+  }
+
+  res.json({ ...data, home_coords });
 });
 
 // PUT /api/v1/auth/preferences

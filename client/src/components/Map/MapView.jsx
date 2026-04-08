@@ -1,10 +1,12 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useEffect, useRef, useCallback, useState } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { CHICAGO_CENTER } from '../../utils/geoUtils.js';
 import { api } from '../../services/api.js';
 import { useFiltersStore } from '../../store/filters.js';
 import { useThemeStore } from '../../store/theme.js';
 import { useTripStore } from '../../store/trip.js';
+import { useAuth } from '../../hooks/useAuth.js';
+import { supabase } from '../../services/supabase.js';
 import { CATEGORY_HEX, DEFAULT_HEX, ALL_CATEGORIES } from '../../utils/categoryColors.js';
 import EventDetailPanel from '../Events/EventDetailPanel.jsx';
 
@@ -56,9 +58,16 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
   const map = useRef(null);
   const boundsTimer = useRef(null);
   const featuresRef = useRef([]); // store loaded features for flyTo lookups
+  const homeMarkerRef = useRef(null);
   const { categories, startDate, endDate, searchQuery, neighborhood, radius } = useFiltersStore();
   const dark = useThemeStore((s) => s.dark);
   const { tripMode, tripDate, tripEvents, routeMode } = useTripStore();
+  const { user } = useAuth();
+
+  // Weather pill state (today's weather, loaded once)
+  const [todayWeather, setTodayWeather] = useState(null);
+  // "For You" toggle — only active when user is logged in
+  const [forYouOn, setForYouOn] = useState(true);
 
   const loadEvents = useCallback(async () => {
     if (!map.current) return;
@@ -319,6 +328,46 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     }, 'event-unclustered-glow');
   }, [selectedEventId]);
 
+  // Fetch today's weather for the map pill overlay
+  useEffect(() => {
+    const dateStr = new Date().toISOString().split('T')[0];
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/weather?date=${dateStr}`)
+      .then((r) => r.ok ? r.json() : null)
+      .then((data) => data && setTodayWeather(data))
+      .catch(() => null);
+  }, []);
+
+  // Place home marker when user is logged in and has home_location
+  useEffect(() => {
+    if (!user || !map.current) return;
+
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        const prefs = await api.getPreferences(session.access_token);
+        if (!prefs?.home_coords) return;
+        const { lat, lng } = prefs.home_coords;
+
+        // Remove existing home marker
+        if (homeMarkerRef.current) homeMarkerRef.current.remove();
+
+        const el = document.createElement('div');
+        el.className = 'home-marker';
+        el.style.cssText = 'width:28px;height:28px;border-radius:50%;background:var(--accent,#d4a843);border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:13px;cursor:default;';
+        el.title = 'Your home base';
+        el.textContent = '🏠';
+
+        homeMarkerRef.current = new mapboxgl.Marker({ element: el, anchor: 'center' })
+          .setLngLat([lng, lat])
+          .addTo(map.current);
+      } catch {
+        // Non-fatal
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user, map.current]);
+
   // Draw Directions route when trip events change
   useEffect(() => {
     if (!map.current) return;
@@ -375,6 +424,33 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
           ))}
         </div>
       </div>
+
+      {/* Weather pill — top-right corner of map (below zoom controls) */}
+      {todayWeather && (
+        <div className="absolute top-24 right-3 z-10">
+          <div className="theme-surface border theme-border-s rounded-full px-3 py-1.5 text-xs font-medium theme-text theme-shadow flex items-center gap-1.5 whitespace-nowrap">
+            <span>{todayWeather.emoji}</span>
+            <span>{todayWeather.tempHighF}°F</span>
+          </div>
+        </div>
+      )}
+
+      {/* "For You" toggle — only shown when logged in */}
+      {user && (
+        <div className="absolute bottom-20 right-3 z-10 md:bottom-4">
+          <button
+            onClick={() => setForYouOn((v) => !v)}
+            title={forYouOn ? 'Showing personalized view — click for all events' : 'Click to show personalized picks'}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium border transition-all theme-shadow ${
+              forYouOn
+                ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+                : 'theme-surface theme-muted border-[var(--border-subtle)]'
+            }`}
+          >
+            ✨ {forYouOn ? 'For You' : 'All Events'}
+          </button>
+        </div>
+      )}
 
       {selectedEventId && (
         <EventDetailPanel
