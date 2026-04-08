@@ -44,6 +44,8 @@ export const api = {
   // Auth
   getMe: (token) => request('/auth/me', { headers: { Authorization: `Bearer ${token}` } }),
   geocode: (address, token) => request('/auth/geocode', { method: 'POST', body: JSON.stringify({ address }), headers: { Authorization: `Bearer ${token}` } }),
+  getPreferences: (token) => request('/auth/preferences', { headers: { Authorization: `Bearer ${token}` } }),
+  savePreferences: (body, token) => request('/auth/preferences', { method: 'PUT', body: JSON.stringify(body), headers: { Authorization: `Bearer ${token}` } }),
 
   // Trips
   getTrip: (id, token) => request(`/trips/${id}`, token ? { headers: { Authorization: `Bearer ${token}` } } : {}),

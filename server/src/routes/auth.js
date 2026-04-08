@@ -72,6 +72,64 @@ router.post('/geocode', checkAuth, async (req, res) => {
   }
 });
 
+// GET /api/v1/auth/preferences
+// Returns the current user's preferences and home_location
+router.get('/preferences', checkAuth, async (req, res) => {
+  const { data, error } = await supabase
+    .from('users')
+    .select('preferences, home_address, home_location, onboarding_complete')
+    .eq('id', req.user.id)
+    .single();
+
+  if (error) return res.status(404).json({ error: 'User not found' });
+  res.json(data);
+});
+
+// PUT /api/v1/auth/preferences
+// Saves user preferences and optional home location
+router.put('/preferences', checkAuth, async (req, res) => {
+  const { preferences, home_address } = req.body;
+
+  const updates = { onboarding_complete: true };
+  if (preferences !== undefined) updates.preferences = preferences;
+  if (home_address !== undefined) updates.home_address = home_address;
+
+  // Geocode home_address to home_location if provided
+  if (home_address) {
+    const token = process.env.MAPBOX_SECRET_TOKEN;
+    if (token) {
+      try {
+        const encoded = encodeURIComponent(home_address);
+        const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encoded}.json?country=us&bbox=-88.5,41.5,-87.5,42.5&access_token=${token}`;
+        const geoRes = await fetch(url);
+        const geoData = await geoRes.json();
+        const feature = geoData.features?.[0];
+        if (feature) {
+          const [lng, lat] = feature.center;
+          updates.home_location = `POINT(${lng} ${lat})`;
+          updates.home_address = feature.place_name;
+        }
+      } catch (err) {
+        console.error('Home geocoding error:', err);
+        // Continue without geocoding — non-fatal
+      }
+    }
+  }
+
+  const { data, error } = await supabase
+    .from('users')
+    .update(updates)
+    .eq('id', req.user.id)
+    .select('preferences, home_address, home_location, onboarding_complete')
+    .single();
+
+  if (error) {
+    console.error('Preferences update error:', error);
+    return res.status(500).json({ error: 'Failed to save preferences' });
+  }
+  res.json(data);
+});
+
 // GET /api/v1/auth/users/search?q=...
 // Search users by display_name for adding to conversations
 router.get('/users/search', checkAuth, async (req, res) => {

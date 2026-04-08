@@ -5,6 +5,34 @@
 
 ---
 
+## Product Philosophy
+
+- **Primary user goal**: spend less time planning, more time experiencing
+- **The map is the canvas**, not just a feature — everything radiates from it
+- **Recommendations must feel personal**, not algorithmic — like a smart local friend
+- **Weather is a first-class input**, not an afterthought — outdoor events on rainy days get flagged
+- **A perfect Saturday itinerary is the north star** — every feature supports this goal
+- **"Plan a Day" is the primary CTA**, not Submit Event
+
+---
+
+## New Feature Decisions (P3 — AI & Personalization)
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Weather API | Open-Meteo (free, no key) | Zero cost, reliable, covers Chicago area, no auth needed |
+| Preference storage | `users.preferences JSONB` | Flexible schema, avoids extra table, Supabase querying is straightforward |
+| Recommendation engine | Claude Sonnet via `server/src/services/ai/orchestrator.js` | Best reasoning for preference-matching + local context |
+| Itinerary format | Ordered stops with travel time between each | Mirrors how people actually plan days — sequential with buffers |
+| AI model calls | Always routed through `orchestrator.js` | Single place to manage API key, error handling, caching, cost control |
+| Recommendation cache | In-memory Map, per user per date, 2 hours TTL | Prevents Claude API call on every page load |
+| Shared itineraries | `saved_itineraries` table with `share_token` | Random 8-char token → public `/plan/share/[token]` page |
+| Email delivery (Phase 3) | Resend | Simple API, generous free tier |
+| Push notifications (Phase 3) | Supabase Edge Functions | No separate infra needed |
+| `ANTHROPIC_API_KEY` | Server env only — **never in client** | Same rule as all other secret keys |
+
+---
+
 ## Project Overview
 
 A full-stack web application for Chicago and surrounding suburbs that:
@@ -241,6 +269,10 @@ bio              TEXT
 age              INTEGER CHECK (age >= 13 AND age <= 120)
 gender           TEXT
 interests        TEXT[] DEFAULT '{}'
+preferences      JSONB DEFAULT '{}'   -- { categories, max_distance_km, budget, group_size, mobility, avoid }
+home_location    GEOGRAPHY(POINT,4326)
+home_address     TEXT
+onboarding_complete BOOLEAN DEFAULT FALSE
 created_at       TIMESTAMPTZ DEFAULT NOW()
 ```
 
@@ -713,6 +745,7 @@ Block check runs in both directions: if A blocks B or B blocks A, neither can me
 | `MAPBOX_SECRET_TOKEN` | mapbox.com → Tokens → secret token (`sk.*`) | Yes for geocoding + submission verification |
 | `PORT` | Set automatically by Railway in prod; use 3001 locally | Auto |
 | `FRONTEND_URL` | Vercel URL (for CORS fallback) | Yes in prod |
+| `ANTHROPIC_API_KEY` | console.anthropic.com → API Keys | Required for recommendations + itinerary (P3) |
 
 ### Client (`/client/.env`)
 | Variable | Source | Required |
@@ -729,13 +762,27 @@ The server allows: `localhost`, any `*.vercel.app` subdomain, and `FRONTEND_URL`
 
 ## AI / Verification
 
-There is no AI orchestrator file. The only AI integration is the **OpenAI Moderation API** used in `server/src/services/verification.js`:
+### Content Moderation (existing)
+`server/src/services/verification.js` uses **OpenAI Moderation API**:
 - Endpoint: `POST https://api.openai.com/v1/moderations`
 - Free API — completely separate from paid chat models
 - Called on every community submission to check title + description
 - Auto-rejects if flagged; skips gracefully if `OPENAI_API_KEY` not set
 
-No Claude / GPT chat models are used anywhere in this project.
+### AI Recommendation & Itinerary System (P3)
+`server/src/services/ai/orchestrator.js` — central router for all Claude calls.
+
+Agents under `server/src/services/ai/agents/`:
+| File | Purpose |
+|---|---|
+| `recommendationAgent.js` | Given user prefs + weather + events → returns 3-5 curated picks with reasons |
+| `itineraryAgent.js` | Given selected events → returns ordered itinerary with travel times + suggestions |
+| `dataQualityAgent.js` | Nightly cron — flags permit-style events, infers is_outdoor, infers is_free |
+
+All agents use **Claude Sonnet** (`claude-sonnet-4-6` via `@anthropic-ai/sdk`).
+Key: `ANTHROPIC_API_KEY` in server env — never expose to client.
+
+Caching: both recommendation and itinerary results are cached in-memory (Map) to prevent repeated API calls.
 
 ---
 
@@ -841,3 +888,11 @@ Prevents unsolicited spam. The first message goes through; subsequent messages f
 | M10: Admin approve/reject flows | ✅ |
 | P2: Admin User Reports tab | ✅ |
 | Remaining: mobile polish, /trip/:id public page | 🔄 |
+| P3: User Preference System (onboarding + preferences page) | 🔄 |
+| P3: Weather Integration (Open-Meteo + WeatherBadge) | ⬜ |
+| P3: AI Recommendation Engine (Claude Sonnet) | ⬜ |
+| P3: Plan a Day — itinerary builder + /plan page | ⬜ |
+| P3: Smart Map Enhancements (personalized layer, home marker) | ⬜ |
+| P3: Shareable Itinerary Links | ⬜ |
+| P3: Data Quality Agent + Suburban Expansion | ⬜ |
+| P3: Polish & Performance | ⬜ |

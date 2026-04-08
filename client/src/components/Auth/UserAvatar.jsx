@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth.js';
 
 export default function UserAvatar() {
@@ -30,50 +31,42 @@ export default function UserAvatar() {
         <>
           {/* Click-away backdrop */}
           <div className="fixed inset-0 z-10" onClick={() => setMenuOpen(false)} />
-          <div className="absolute right-0 top-10 z-20 w-48 bg-white border rounded-lg shadow-lg py-1">
-            <div className="px-3 py-2 border-b">
-              <div className="text-sm font-medium text-gray-800 truncate">{displayName}</div>
-              <div className="text-xs text-gray-400 truncate">{user.email}</div>
+          <div className="absolute right-0 top-10 z-20 w-52 theme-surface border theme-border-s rounded-xl shadow-lg theme-shadow py-1 overflow-hidden">
+            <div className="px-3 py-2.5 border-b theme-border-s">
+              <div className="text-sm font-semibold theme-text truncate">{displayName}</div>
+              <div className="text-xs theme-faint truncate">{user.email}</div>
               {isAdmin && (
-                <span className="text-xs text-purple-600 font-medium">Admin</span>
+                <span className="text-xs font-medium mt-0.5 block" style={{ color: 'var(--accent)' }}>Admin</span>
               )}
             </div>
-            <a
-              href="/messages"
-              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              onClick={() => setMenuOpen(false)}
-            >
-              Messages
-            </a>
-            <a
-              href="/collections"
-              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              onClick={() => setMenuOpen(false)}
-            >
-              Collections
-            </a>
-            <a
-              href="/my-submissions"
-              className="block px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-              onClick={() => setMenuOpen(false)}
-            >
-              My Submissions
-            </a>
+            <Link to="/preferences" className="block px-3 py-2 text-sm theme-muted hover:theme-surface2 transition-colors" onClick={() => setMenuOpen(false)}>
+              ⚙️ My Preferences
+            </Link>
+            <Link to="/profile/me" className="block px-3 py-2 text-sm theme-muted hover:theme-surface2 transition-colors" onClick={() => setMenuOpen(false)}>
+              👤 My Profile
+            </Link>
+            <Link to="/messages" className="block px-3 py-2 text-sm theme-muted hover:theme-surface2 transition-colors" onClick={() => setMenuOpen(false)}>
+              💬 Messages
+            </Link>
+            <Link to="/collections" className="block px-3 py-2 text-sm theme-muted hover:theme-surface2 transition-colors" onClick={() => setMenuOpen(false)}>
+              🔖 Saved Events
+            </Link>
+            <Link to="/my-submissions" className="block px-3 py-2 text-sm theme-muted hover:theme-surface2 transition-colors" onClick={() => setMenuOpen(false)}>
+              📋 My Submissions
+            </Link>
             {isAdmin && (
-              <a
-                href="/admin"
-                className="block px-3 py-2 text-sm text-purple-600 hover:bg-purple-50"
-                onClick={() => setMenuOpen(false)}
-              >
-                Admin Dashboard
-              </a>
+              <Link to="/admin" className="block px-3 py-2 text-sm font-medium hover:theme-surface2 transition-colors" style={{ color: 'var(--accent)' }} onClick={() => setMenuOpen(false)}>
+                🛡️ Admin Dashboard
+              </Link>
             )}
-            <button
-              onClick={() => { signOut(); setMenuOpen(false); }}
-              className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50"
-            >
-              Sign out
-            </button>
+            <div className="border-t theme-border-s mt-1">
+              <button
+                onClick={() => { signOut(); setMenuOpen(false); }}
+                className="w-full text-left px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 transition-colors"
+              >
+                Sign out
+              </button>
+            </div>
           </div>
         </>
       )}
