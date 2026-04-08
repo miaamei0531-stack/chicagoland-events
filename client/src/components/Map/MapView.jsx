@@ -12,7 +12,10 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const DAY_STYLE = 'mapbox://styles/mapbox/light-v11';
 const DARK_STYLE = 'mapbox://styles/mapbox/dark-v11';
-const CLUSTER_COLOR = '#64748b'; // slate — neutral for mixed-category clusters
+// Cluster colors by size
+const CLUSTER_SMALL  = '#E8601C'; // orange  — < 10
+const CLUSTER_MEDIUM = '#D97706'; // amber   — < 50
+const CLUSTER_LARGE  = '#2C7A5C'; // green   — 50+
 
 // Approximate centers for each neighborhood option in FiltersPanel
 const NEIGHBORHOOD_CENTERS = {
@@ -155,8 +158,8 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
       source: 'events',
       filter: ['has', 'point_count'],
       paint: {
-        'circle-color': CLUSTER_COLOR,
-        'circle-radius': ['step', ['get', 'point_count'], 18, 5, 24, 20, 30],
+        'circle-color': ['step', ['get', 'point_count'], CLUSTER_SMALL, 10, CLUSTER_MEDIUM, 50, CLUSTER_LARGE],
+        'circle-radius': ['step', ['get', 'point_count'], 18, 10, 24, 50, 30],
         'circle-opacity': 0.82,
         'circle-stroke-width': 2,
         'circle-stroke-color': '#fff',

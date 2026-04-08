@@ -23,32 +23,12 @@ export default function Navbar({ onFiltersToggle, onListToggle }) {
 
       {/* Desktop nav links */}
       {user && (
-        <>
-          <Link
-            to="/messages"
-            className="hidden sm:block text-xs theme-muted hover:theme-text px-2.5 py-1.5 rounded-lg hover:theme-surface2 transition-colors whitespace-nowrap"
-          >
-            Messages
-          </Link>
-          <Link
-            to="/collections"
-            className="hidden sm:block text-xs theme-muted hover:theme-text px-2.5 py-1.5 rounded-lg hover:theme-surface2 transition-colors whitespace-nowrap"
-          >
-            Saved
-          </Link>
-          <Link
-            to="/my-submissions"
-            className="hidden sm:block text-xs theme-muted hover:theme-text px-2.5 py-1.5 rounded-lg hover:theme-surface2 transition-colors whitespace-nowrap"
-          >
-            My Submissions
-          </Link>
-          <Link
-            to="/my-trips"
-            className="hidden sm:block text-xs theme-muted hover:theme-text px-2.5 py-1.5 rounded-lg hover:theme-surface2 transition-colors whitespace-nowrap"
-          >
-            My Trips
-          </Link>
-        </>
+        <Link
+          to="/my-submissions"
+          className="hidden sm:block text-xs theme-muted hover:theme-text px-2.5 py-1.5 rounded-lg hover:theme-surface2 transition-colors whitespace-nowrap"
+        >
+          My Submissions
+        </Link>
       )}
       {profile?.is_admin && (
         <Link

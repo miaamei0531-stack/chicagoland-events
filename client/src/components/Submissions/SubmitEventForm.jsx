@@ -127,14 +127,17 @@ export default function SubmitEventForm({ onClose, initialData = null, submissio
             const active = n === step;
             return (
               <div key={label} className="flex items-center gap-1 flex-1 last:flex-none">
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                  done ? 'bg-community text-white' : active ? 'bg-official text-white' : 'bg-gray-100 text-gray-400'
-                }`}>
+                <div
+                  title={label}
+                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
+                    done ? 'bg-community text-white' : active ? 'bg-official text-white' : 'bg-gray-100 text-gray-400'
+                  }`}
+                >
                   {done ? '✓' : n}
                 </div>
-                <span className={`text-xs hidden sm:block ${active ? 'text-gray-700 font-medium' : 'text-gray-400'}`}>
-                  {label}
-                </span>
+                {active && (
+                  <span className="text-xs text-gray-700 font-medium truncate max-w-[52px]">{label}</span>
+                )}
                 {i < STEPS.length - 1 && <div className="flex-1 h-px bg-gray-100 mx-1" />}
               </div>
             );
