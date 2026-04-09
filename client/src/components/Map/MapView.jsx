@@ -59,6 +59,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
   const boundsTimer = useRef(null);
   const featuresRef = useRef([]); // store loaded features for flyTo lookups
   const homeMarkerRef = useRef(null);
+  const loadEventsRef = useRef(null); // always points to the latest loadEvents closure
   const { categories, startDate, endDate, searchQuery, neighborhood, radius } = useFiltersStore();
   const dark = useThemeStore((s) => s.dark);
   const { tripMode, tripDate, tripEvents, routeMode } = useTripStore();
@@ -148,6 +149,9 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
       console.error('Failed to load events:', err);
     }
   }, [tripMode, tripDate, categories, startDate, endDate, searchQuery, neighborhood, radius]);
+
+  // Keep ref in sync so the moveend handler always calls the latest closure
+  useEffect(() => { loadEventsRef.current = loadEvents; }, [loadEvents]);
 
   function addSourcesAndLayers() {
     if (map.current.getSource('events')) return; // already added
@@ -263,7 +267,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
 
     map.current.on('moveend', () => {
       clearTimeout(boundsTimer.current);
-      boundsTimer.current = setTimeout(loadEvents, 400);
+      boundsTimer.current = setTimeout(() => loadEventsRef.current?.(), 400);
     });
 
     return () => { clearTimeout(boundsTimer.current); };
