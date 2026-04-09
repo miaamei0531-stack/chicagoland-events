@@ -72,12 +72,13 @@ export default function MyTrips() {
           {!loading && trips.length === 0 && (
             <div className="text-center py-16 space-y-3">
               <p className="text-3xl">🗺️</p>
-              <p className="theme-muted text-sm">No saved trips yet.</p>
+              <p className="theme-muted text-sm font-medium">Your saved day trips will appear here.</p>
+              <p className="text-xs theme-faint">Build an itinerary on the Plan a Day page and save it.</p>
               <button
-                onClick={() => { useTripStore.getState().reset(); useTripStore.getState().setTripMode(true); navigate('/'); }}
-                className="text-xs text-[var(--accent)] hover:underline"
+                onClick={() => navigate('/plan')}
+                className="text-xs text-[var(--accent)] font-medium hover:underline"
               >
-                Plan your first trip →
+                Start planning →
               </button>
             </div>
           )}

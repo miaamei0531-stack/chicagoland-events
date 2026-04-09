@@ -745,7 +745,7 @@ Block check runs in both directions: if A blocks B or B blocks A, neither can me
 | `MAPBOX_SECRET_TOKEN` | mapbox.com → Tokens → secret token (`sk.*`) | Yes for geocoding + submission verification |
 | `PORT` | Set automatically by Railway in prod; use 3001 locally | Auto |
 | `FRONTEND_URL` | Vercel URL (for CORS fallback) | Yes in prod |
-| `ANTHROPIC_API_KEY` | console.anthropic.com → API Keys | Required for recommendations + itinerary (P3) |
+| `ANTHROPIC_API_KEY` | console.anthropic.com → API Keys | Required for recommendations + itinerary |
 
 ### Client (`/client/.env`)
 | Variable | Source | Required |
@@ -893,6 +893,8 @@ Prevents unsolicited spam. The first message goes through; subsequent messages f
 | P3: AI Recommendation Engine (Claude Sonnet) | ⬜ |
 | P3: Plan a Day — itinerary builder + /plan page | ⬜ |
 | P3: Smart Map Enhancements (personalized layer, home marker) | ⬜ |
-| P3: Shareable Itinerary Links | ⬜ |
-| P3: Data Quality Agent + Suburban Expansion | ⬜ |
-| P3: Polish & Performance | ⬜ |
+| P3: Shareable Itinerary Links (/plan/share/:token) | ✅ |
+| P3: Data Quality Agent + Suburban Expansion | 🔄 |
+| P3: Polish & Performance | 🔄 |
+| Phase 4: Friday Evening Digest (Resend email) | ⬜ — documented only |
+| Phase 4: Weekend Reminder (Supabase Edge Functions push) | ⬜ — documented only |

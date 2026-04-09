@@ -54,10 +54,16 @@ export default function EventList({ onSelectEvent, onClose, selectedEventId }) {
           </>
         )}
         {!loading && error && (
-          <p className="text-sm text-red-400 text-center py-6">Failed to load events.</p>
+          <div className="text-center py-8 px-4">
+            <p className="text-sm theme-muted mb-1">Couldn't load events right now.</p>
+            <p className="text-xs theme-faint">Check your connection and try refreshing.</p>
+          </div>
         )}
         {!loading && !error && events.length === 0 && (
-          <p className="text-sm theme-faint text-center py-6">No events in this area.</p>
+          <div className="text-center py-8 px-4">
+            <p className="text-sm theme-muted mb-1">Nothing matches those filters right now.</p>
+            <p className="text-xs theme-faint">Try a wider radius, different dates, or clear a category.</p>
+          </div>
         )}
         {!loading && events.map((event) => (
           <div
