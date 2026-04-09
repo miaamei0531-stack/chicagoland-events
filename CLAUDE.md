@@ -539,6 +539,34 @@ POST /api/v1/users/:id/report           Auth    Report user
 POST /api/v1/ingest/ticketmaster        Public  Runs Ticketmaster worker in background
 POST /api/v1/ingest/predicthq           Public  Runs PredictHQ worker in background
 POST /api/v1/ingest/chicago-open-data   Public  Runs Chicago Open Data worker in background
+POST /api/v1/ingest/suburbs             Public  Runs suburban iCal ingestion in background
+POST /api/v1/ingest/data-quality        Public  Runs data quality agent in background
+```
+
+#### Recommendations
+```
+GET  /api/v1/recommendations?date=saturday|sunday|YYYY-MM-DD  Auth  AI-curated picks for user
+```
+
+#### Itinerary
+```
+POST /api/v1/itinerary/build            Auth    Build AI itinerary from event_ids + date
+GET  /api/v1/itinerary/mine             Auth    List user's saved itineraries
+POST /api/v1/itinerary                  Auth    Save an itinerary (generates share_token if is_public)
+PUT  /api/v1/itinerary/:id              Auth    Update title / is_public
+GET  /api/v1/itinerary/share/:token     Public  Public shareable itinerary (no auth)
+```
+
+#### Preferences
+```
+GET  /api/v1/auth/preferences           Auth    Current user preferences + home_coords
+PUT  /api/v1/auth/preferences           Auth    Save preferences + geocode home_address
+```
+
+#### Weather
+```
+GET  /api/v1/weather?lat=&lng=&date=    Public  Single-day forecast (defaults to Chicago)
+GET  /api/v1/weather                    Public  Weekend forecast (saturday + sunday)
 ```
 
 #### Health
@@ -556,6 +584,7 @@ GET  /api/v1/health                     Public  { status: 'ok', timestamp }
 | Ticketmaster | `server/src/ingestion/ticketmaster.js` | Every 6h + startup | Concerts, sports, theater, major ticketed events | `TICKETMASTER_API_KEY` |
 | PredictHQ | `server/src/ingestion/predicthq.js` | Every 12h + startup | Community events, classes, workshops, festivals (aggregates 19+ sources incl. Eventbrite) | `PREDICTHQ_API_KEY` |
 | Chicago Open Data | `server/src/ingestion/chicago-open-data.js` | Daily 3am + startup | Park permits, outdoor events | None (public) |
+| Suburban iCal | `server/src/ingestion/suburbs-ical.js` | Daily 3:30am | Evanston, Oak Park, Naperville, Schaumburg city event calendars | None (public iCal) |
 
 > **Eventbrite API deprecated (2023)** — returns 404 for all search requests. Do not attempt to re-add it.
 
@@ -611,6 +640,9 @@ toggle: () => void
 ### Routing (`client/src/App.jsx`)
 ```
 /                     Home (map + filters + events)
+/plan                 Plan a Day — AI picks + My Day builder + itinerary
+/plan/share/:token    Public shareable itinerary (no auth required)
+/preferences          User preference wizard (4 sections, pre-filled)
 /my-submissions       User's submission history
 /collections          Saved + commented events
 /messages             Messaging inbox
@@ -643,6 +675,16 @@ Messaging/ChatView.jsx       DM/group chat with realtime messages
 Admin/AdminDashboard.jsx     5 tabs: Pending | Flagged | Comments | User Reports | All
 Admin/SubmissionReviewCard.jsx  Approve/reject/flag with verification score
 Admin/VerificationScoreBar.jsx  Visual 0-100 score with per-check breakdown
+Onboarding/OnboardingModal.jsx  4-step first-login wizard (categories, mobility, group, home)
+Weather/WeatherBadge.jsx        Outdoor event weather indicator in EventDetailPanel
+Weather/WeatherWidget.jsx       Today + weekend forecast toggle in EventList header
+```
+
+### AI Agents (`server/src/services/ai/agents/`)
+```
+recommendationAgent.js  Claude Sonnet picks 3-5 events with reasons + fit scores (2hr cache per user+date)
+itineraryAgent.js       Claude Sonnet builds ordered day itinerary with travel times + local suggestions
+dataQualityAgent.js     Rule-based nightly pass: flags admin events, infers is_outdoor, infers is_free
 ```
 
 ### Map State Pattern
@@ -888,13 +930,13 @@ Prevents unsolicited spam. The first message goes through; subsequent messages f
 | M10: Admin approve/reject flows | ✅ |
 | P2: Admin User Reports tab | ✅ |
 | Remaining: mobile polish, /trip/:id public page | 🔄 |
-| P3: User Preference System (onboarding + preferences page) | 🔄 |
-| P3: Weather Integration (Open-Meteo + WeatherBadge) | ⬜ |
-| P3: AI Recommendation Engine (Claude Sonnet) | ⬜ |
-| P3: Plan a Day — itinerary builder + /plan page | ⬜ |
-| P3: Smart Map Enhancements (personalized layer, home marker) | ⬜ |
+| P3: User Preference System (onboarding + preferences page) | ✅ |
+| P3: Weather Integration (Open-Meteo + WeatherBadge) | ✅ |
+| P3: AI Recommendation Engine (Claude Sonnet) | ✅ |
+| P3: Plan a Day — itinerary builder + /plan page | ✅ |
+| P3: Smart Map Enhancements (weather pill, home marker, For You toggle) | ✅ |
 | P3: Shareable Itinerary Links (/plan/share/:token) | ✅ |
-| P3: Data Quality Agent + Suburban Expansion | 🔄 |
-| P3: Polish & Performance | 🔄 |
+| P3: Data Quality Agent + Suburban iCal Ingestion | ✅ |
+| P3: Polish (meta tags, empty states, error states) | ✅ |
 | Phase 4: Friday Evening Digest (Resend email) | ⬜ — documented only |
 | Phase 4: Weekend Reminder (Supabase Edge Functions push) | ⬜ — documented only |
