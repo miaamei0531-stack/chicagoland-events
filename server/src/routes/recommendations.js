@@ -55,9 +55,9 @@ router.get('/', checkAuth, async (req, res) => {
   if (userErr) return res.status(404).json({ error: 'User not found' });
 
   const prefs = userRow.preferences || {};
-  const homeCoords = parseCoordinates(userRow.home_location);
-  const homeLat = homeCoords?.coordinates?.[1] ?? CHICAGO_LAT;
-  const homeLng = homeCoords?.coordinates?.[0] ?? CHICAGO_LNG;
+  const homeRow = attachCoords({ coordinates: userRow.home_location });
+  const homeLat = homeRow.coordinates?.coordinates?.[1] ?? CHICAGO_LAT;
+  const homeLng = homeRow.coordinates?.coordinates?.[0] ?? CHICAGO_LNG;
   const maxDistanceKm = prefs.max_distance_km || 15;
 
   // 3. Fetch weather for target date at home location
