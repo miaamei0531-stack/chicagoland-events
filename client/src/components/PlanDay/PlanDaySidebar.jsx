@@ -142,6 +142,24 @@ export default function PlanDaySidebar({ onSelectEvent, onClose }) {
           />
         ) : (
           <>
+            {/* My Day — pinned above events so Build button is always visible */}
+            {myDayEvents.length > 0 && (
+              <section>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-semibold theme-muted uppercase tracking-widest">My Day</h3>
+                  <button onClick={clearMyDay} className="text-[10px] theme-faint hover:text-red-500 transition-colors">Clear all</button>
+                </div>
+                <MyDayList
+                  events={myDayEvents}
+                  onRemove={removeFromMyDay}
+                  onBuildItinerary={handleBuildItinerary}
+                  building={building}
+                />
+              </section>
+            )}
+
+            {building && <LoadingState />}
+
             {/* Events for this date */}
             <section>
               <div className="flex items-center justify-between mb-2">
@@ -185,24 +203,6 @@ export default function PlanDaySidebar({ onSelectEvent, onClose }) {
                 </div>
               )}
             </section>
-
-            {/* My Day */}
-            <section>
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-xs font-semibold theme-muted uppercase tracking-widest">My Day</h3>
-                {myDayEvents.length > 0 && (
-                  <button onClick={clearMyDay} className="text-[10px] theme-faint hover:text-red-500 transition-colors">Clear all</button>
-                )}
-              </div>
-              <MyDayList
-                events={myDayEvents}
-                onRemove={removeFromMyDay}
-                onBuildItinerary={handleBuildItinerary}
-                building={building}
-              />
-            </section>
-
-            {building && <LoadingState />}
           </>
         )}
       </div>
