@@ -53,7 +53,14 @@ router.get('/', async (req, res) => {
     const { data, error } = await query;
     if (error) throw error;
 
-    res.json(data.map(attachCoords));
+    // Filter out permit/admin entries that aren't real events
+    const ADMIN_PREFIXES = ['permit -', 'administrative reservation', 'internal hold'];
+    const filtered = data.filter((e) => {
+      const t = (e.title || '').toLowerCase();
+      return !ADMIN_PREFIXES.some((prefix) => t.startsWith(prefix) || t.includes(prefix));
+    });
+
+    res.json(filtered.map(attachCoords));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch events' });

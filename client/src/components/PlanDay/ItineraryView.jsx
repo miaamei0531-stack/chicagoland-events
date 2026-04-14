@@ -37,7 +37,13 @@ function Stop({ stop, isLast }) {
         }`}>
           <div className="flex items-center justify-between mb-0.5">
             <span className="font-semibold theme-faint">{stop.time}</span>
-            {stop.duration_minutes && <span className="theme-faint">{stop.duration_minutes}m</span>}
+            {stop.duration_minutes != null && stop.duration_minutes > 0 && (
+              <span className="theme-faint">
+                {stop.duration_minutes >= 60
+                  ? `${Math.floor(stop.duration_minutes / 60)}h${stop.duration_minutes % 60 > 0 ? ` ${stop.duration_minutes % 60}m` : ''}`
+                  : `${stop.duration_minutes}m`}
+              </span>
+            )}
           </div>
           <p className="font-semibold theme-text text-sm">{stop.title}</p>
           {stop.description && <p className="theme-muted mt-0.5 leading-relaxed">{stop.description}</p>}
