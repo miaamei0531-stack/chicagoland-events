@@ -58,22 +58,20 @@ export default function Navbar({ onFiltersToggle, onListToggle }) {
         </button>
       </div>
 
-      {/* Plan a Day CTA — toggles sidebar on Home, navigates to / if elsewhere */}
-      {user && (
-        <button
-          onClick={() => {
-            if (window.location.pathname !== '/') navigate('/');
-            togglePlan();
-          }}
-          className={`hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-all ${
-            isPlanOpen
-              ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
-              : 'theme-surface2 theme-muted border-[var(--border-subtle)] hover:border-[var(--accent)] hover:text-[var(--accent)]'
-          }`}
-        >
-          ✨ Plan a Day
-        </button>
-      )}
+      {/* Plan a Day CTA — toggles sidebar on Home, always visible */}
+      <button
+        onClick={() => {
+          if (window.location.pathname !== '/') navigate('/');
+          togglePlan();
+        }}
+        className={`hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-all ${
+          isPlanOpen
+            ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+            : 'theme-surface2 theme-muted border-[var(--border-subtle)] hover:border-[var(--accent)] hover:text-[var(--accent)]'
+        }`}
+      >
+        ✨ Plan a Day
+      </button>
 
       {/* Dark mode toggle */}
       <button
