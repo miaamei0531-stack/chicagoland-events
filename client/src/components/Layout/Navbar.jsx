@@ -4,11 +4,13 @@ import UserAvatar from '../Auth/UserAvatar.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useThemeStore } from '../../store/theme.js';
 import { useTripStore } from '../../store/trip.js';
+import { usePlanStore } from '../../store/plan.js';
 
 export default function Navbar({ onFiltersToggle, onListToggle }) {
   const { user, profile } = useAuth();
   const { dark, toggle } = useThemeStore();
   const { tripMode, setTripMode, reset: resetTrip } = useTripStore();
+  const { isPlanOpen, togglePlan } = usePlanStore();
   const navigate = useNavigate();
 
   return (
@@ -56,11 +58,18 @@ export default function Navbar({ onFiltersToggle, onListToggle }) {
         </button>
       </div>
 
-      {/* Plan a Day CTA */}
+      {/* Plan a Day CTA — toggles sidebar on Home, navigates to / if elsewhere */}
       {user && (
         <button
-          onClick={() => navigate('/plan')}
-          className="hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-all theme-surface2 theme-muted border-[var(--border-subtle)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          onClick={() => {
+            if (window.location.pathname !== '/') navigate('/');
+            togglePlan();
+          }}
+          className={`hidden sm:flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-all ${
+            isPlanOpen
+              ? 'bg-[var(--accent)] text-white border-[var(--accent)]'
+              : 'theme-surface2 theme-muted border-[var(--border-subtle)] hover:border-[var(--accent)] hover:text-[var(--accent)]'
+          }`}
         >
           ✨ Plan a Day
         </button>

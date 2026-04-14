@@ -15,7 +15,10 @@ function haversineKm(lat1, lng1, lat2, lng2) {
 // Params: category[], start_date, end_date, q, neighborhood, radius, lat, lng, radius_km, limit, offset
 router.get('/', async (req, res) => {
   try {
-    const { category, start_date, end_date, q, neighborhood, radius, lat, lng, radius_km, limit = 100, offset = 0 } = req.query;
+    const { category, start_date, end_date, date, q, neighborhood, radius, lat, lng, radius_km, limit = 100, offset = 0 } = req.query;
+    // date= shorthand: sets both start_date and end_date to the same day
+    const effectiveStartDate = start_date || date || null;
+    const effectiveEndDate = end_date || date || null;
 
     // Radius search — use PostGIS ST_DWithin via RPC
     if (lat && lng && radius_km) {
@@ -40,8 +43,8 @@ router.get('/', async (req, res) => {
       const cats = Array.isArray(category) ? category : [category];
       query = query.overlaps('category', cats);
     }
-    if (start_date) query = query.gte('start_datetime', `${start_date}T00:00:00.000Z`);
-    if (end_date) query = query.lte('start_datetime', `${end_date}T23:59:59.999Z`);
+    if (effectiveStartDate) query = query.gte('start_datetime', `${effectiveStartDate}T00:00:00.000Z`);
+    if (effectiveEndDate) query = query.lte('start_datetime', `${effectiveEndDate}T23:59:59.999Z`);
     if (q) query = query.ilike('title', `%${q}%`);
     // Only apply neighborhood text filter when no radius — radius is the geo filter;
     // neighborhood text-match is unreliable since most ingested events have null neighborhood
