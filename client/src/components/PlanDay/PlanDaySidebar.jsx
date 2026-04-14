@@ -61,14 +61,17 @@ export default function PlanDaySidebar({ onSelectEvent, onClose }) {
     loadDateEvents();
   }, [loadDateEvents]);
 
-  // Build itinerary
+  // Build itinerary — sort chronologically before sending
   const handleBuildItinerary = useCallback(async () => {
     if (myDayEvents.length < 2) return;
     setBuilding(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      const sorted = [...myDayEvents].sort((a, b) =>
+        new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime()
+      );
       const data = await api.buildItinerary(
-        { event_ids: myDayEvents.map((e) => e.id), date: selectedDate },
+        { event_ids: sorted.map((e) => e.id), date: selectedDate },
         session?.access_token
       );
       setItinerary(data);

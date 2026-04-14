@@ -41,7 +41,7 @@ export default function MyDayList({ events, onRemove, onReorder, onBuildItinerar
         </button>
       )}
       {events.length === 1 && (
-        <p className="text-[10px] theme-faint text-center">Add one more event</p>
+        <p className="text-[10px] theme-faint text-center">Add at least 2 events to generate an itinerary with travel between stops</p>
       )}
     </div>
   );
