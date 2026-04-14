@@ -10,6 +10,7 @@ import { supabase } from '../../services/supabase.js';
 import { CATEGORY_HEX, DEFAULT_HEX, ALL_CATEGORIES } from '../../utils/categoryColors.js';
 import EventDetailPanel from '../Events/EventDetailPanel.jsx';
 import { NEIGHBORHOOD_CENTERS } from '../../utils/neighborhoods.js';
+import { usePlanStore } from '../../store/plan.js';
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -42,6 +43,8 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
   const { categories, startDate, endDate, searchQuery, neighborhood, radius } = useFiltersStore();
   const dark = useThemeStore((s) => s.dark);
   const { tripMode, tripDate, tripEvents, routeMode } = useTripStore();
+  const isPlanOpen = usePlanStore((s) => s.isPlanOpen);
+  const planDate = usePlanStore((s) => s.selectedDate);
   const { user } = useAuth();
 
   // Weather pill state (today's weather, loaded once)
@@ -85,7 +88,11 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
         }
       }
 
-      if (tripMode && tripDate) {
+      if (isPlanOpen && planDate) {
+        // Plan mode: show only events on the selected plan date
+        params.start_date = planDate;
+        params.end_date = planDate;
+      } else if (tripMode && tripDate) {
         // Lock date to trip date; ignore the normal date range filters
         params.start_date = tripDate;
         params.end_date = tripDate;
@@ -127,7 +134,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     } catch (err) {
       console.error('Failed to load events:', err);
     }
-  }, [tripMode, tripDate, categories, startDate, endDate, searchQuery, neighborhood, radius]);
+  }, [tripMode, tripDate, categories, startDate, endDate, searchQuery, neighborhood, radius, isPlanOpen, planDate]);
 
   // Keep ref in sync so the moveend handler always calls the latest closure
   useEffect(() => { loadEventsRef.current = loadEvents; }, [loadEvents]);
@@ -275,7 +282,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     if (!map.current) return;
     clearTimeout(boundsTimer.current);
     boundsTimer.current = setTimeout(loadEvents, 300);
-  }, [categories, startDate, endDate, searchQuery, neighborhood, radius, tripMode, tripDate, loadEvents]);
+  }, [categories, startDate, endDate, searchQuery, neighborhood, radius, tripMode, tripDate, isPlanOpen, planDate, loadEvents]);
 
   // Fly to + pulse-highlight selected event
   useEffect(() => {
