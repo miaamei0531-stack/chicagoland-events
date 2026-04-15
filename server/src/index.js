@@ -38,6 +38,7 @@ app.use('/api/v1/ingest', require('./routes/ingest'));
 app.use('/api/v1/weather', require('./routes/weather'));
 app.use('/api/v1/recommendations', require('./routes/recommendations'));
 app.use('/api/v1/itinerary', require('./routes/itinerary'));
+app.use('/api/v1/places', require('./routes/places'));
 
 app.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

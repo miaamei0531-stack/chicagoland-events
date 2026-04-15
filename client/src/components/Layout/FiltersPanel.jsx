@@ -95,6 +95,22 @@ export default function FiltersPanel({ open, onClose }) {
           <DateRangePicker />
         )}
 
+        {/* Places filter — separate from event categories */}
+        <div className="pt-2 border-t theme-border-s">
+          <p className="text-xs font-semibold theme-muted uppercase tracking-widest mb-2">Places</p>
+          <div className="flex flex-wrap gap-1.5">
+            {['Restaurant', 'Coffee', 'Park', 'Museum', 'Movie Theater', 'Spa', 'Bar'].map((cat) => (
+              <span
+                key={cat}
+                className="text-[10px] px-2 py-0.5 rounded-full font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300"
+              >
+                {cat}
+              </span>
+            ))}
+          </div>
+          <p className="text-[10px] theme-faint mt-1.5">Purple markers on map · click to view details</p>
+        </div>
+
         {/* Category legend — desktop only */}
         <div className="hidden md:block pt-2 border-t theme-border-s">
           <p className="text-xs font-semibold theme-muted uppercase tracking-widest mb-2">Map Legend</p>
@@ -105,6 +121,10 @@ export default function FiltersPanel({ open, onClose }) {
                 <span className="text-xs theme-text">{cat}</span>
               </div>
             ))}
+            <div className="flex items-center gap-2 pt-1 border-t theme-border-s mt-1">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: '#8B5CF6' }} />
+              <span className="text-xs theme-text">Places</span>
+            </div>
           </div>
         </div>
       </div>

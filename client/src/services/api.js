@@ -60,6 +60,11 @@ export const api = {
   updateItinerary: (id, body, token) => request(`/itinerary/${id}`, { method: 'PUT', body: JSON.stringify(body), headers: { Authorization: `Bearer ${token}` } }),
   getSharedItinerary: (token) => request(`/itinerary/share/${token}`),
 
+  // Places
+  getPlaces: (params) => request(`/places?${toQueryString(params)}`),
+  getPlace: (id) => request(`/places/${id}`),
+  getPlacesWithinBounds: (params) => request(`/places/within-bounds?${toQueryString(params)}`),
+
   // Trips
   getTrip: (id, token) => request(`/trips/${id}`, token ? { headers: { Authorization: `Bearer ${token}` } } : {}),
   getMyTrips: (token) => request('/trips/me/list', { headers: { Authorization: `Bearer ${token}` } }),

@@ -50,8 +50,23 @@ router.post('/build', checkAuth, async (req, res) => {
     // non-fatal
   }
 
+  // Fetch nearby places for AI suggestions
+  let nearbyPlaces = [];
+  try {
+    const { data: placesData } = await supabase
+      .from('places')
+      .select('name, category, address, rating, price_level')
+      .eq('is_active', true)
+      .order('rating', { ascending: false, nullsFirst: false })
+      .limit(15);
+    nearbyPlaces = placesData || [];
+  } catch {
+    // non-fatal
+  }
+
   const itinerary = await buildItinerary({
     selectedEvents: events,
+    nearbyPlaces,
     homeLocation: homeCoords,
     date,
     weatherData,

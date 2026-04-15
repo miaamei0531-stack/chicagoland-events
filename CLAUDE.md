@@ -178,6 +178,7 @@ borderRadius: {
 |---|---|---|---|
 | Official/ingested | `text-official` / `bg-official` | `#3B82F6` | Eventbrite, Ticketmaster, Open Data markers |
 | Community/approved | `text-community` / `bg-community` | `#2E986A` | User-submitted + approved events |
+| Places | — | `#8B5CF6` | Google Places markers (purple) |
 
 ### Category Colors (map markers + pills)
 | Category | Hex | Tailwind pill class |
@@ -310,6 +311,39 @@ created_at TIMESTAMPTZ DEFAULT NOW()
 UNIQUE(user_id, event_id)
 ```
 
+### `places`
+```sql
+id                       UUID PRIMARY KEY DEFAULT gen_random_uuid()
+external_id              TEXT                    -- Google place_id
+source                   TEXT                    -- 'google'|'yelp'|'manual'
+name                     TEXT NOT NULL
+category                 TEXT[]                  -- 'Restaurant','Coffee','Bar','Park','Trail','Museum','Movie Theater','Spa','Shopping','Sports','Live Music Venue'
+subcategory              TEXT                    -- 'Italian', 'Nature Trail', etc.
+description              TEXT
+address                  TEXT
+neighborhood             TEXT
+city                     TEXT DEFAULT 'Chicago'
+coordinates              GEOGRAPHY(Point,4326)
+hours                    JSONB                   -- { mon: "11am-10pm", ... }
+price_level              INTEGER                 -- 1-4 ($, $$, $$$, $$$$)
+rating                   DECIMAL(2,1)
+review_count             INTEGER
+image_url                TEXT
+website_url              TEXT
+reservation_url          TEXT
+typical_duration_minutes INTEGER
+best_time_to_visit       TEXT
+insider_tip              TEXT
+is_outdoor               BOOLEAN
+requires_reservation     BOOLEAN DEFAULT FALSE
+is_active                BOOLEAN DEFAULT TRUE
+content_hash             TEXT
+created_at               TIMESTAMPTZ DEFAULT NOW()
+updated_at               TIMESTAMPTZ DEFAULT NOW()
+
+UNIQUE(source, external_id)
+```
+
 ### `conversations`
 ```sql
 id          UUID PRIMARY KEY DEFAULT gen_random_uuid()
@@ -400,6 +434,9 @@ CREATE INDEX ON trips (user_id);
 CREATE INDEX ON trip_events (trip_id, position);
 CREATE INDEX ON user_blocks (blocked_id);
 CREATE INDEX ON user_reports (reported_id, reviewed);
+CREATE INDEX ON places USING GIST (coordinates);
+CREATE INDEX ON places USING GIN (category);
+CREATE INDEX ON places (is_active);
 ```
 
 ### Database Functions (RPCs)
@@ -541,11 +578,19 @@ POST /api/v1/ingest/predicthq           Public  Runs PredictHQ worker in backgro
 POST /api/v1/ingest/chicago-open-data   Public  Runs Chicago Open Data worker in background
 POST /api/v1/ingest/suburbs             Public  Runs suburban iCal ingestion in background
 POST /api/v1/ingest/data-quality        Public  Runs data quality agent in background
+POST /api/v1/ingest/google-places       Public  Runs Google Places ingestion in background
 ```
 
 #### Recommendations
 ```
 GET  /api/v1/recommendations?date=saturday|sunday|YYYY-MM-DD  Auth  AI-curated picks for user
+```
+
+#### Places
+```
+GET  /api/v1/places                     Public  List places with filters
+GET  /api/v1/places/within-bounds       Public  Map viewport query
+GET  /api/v1/places/:id                 Public  Single place
 ```
 
 #### Itinerary
@@ -585,6 +630,7 @@ GET  /api/v1/health                     Public  { status: 'ok', timestamp }
 | PredictHQ | `server/src/ingestion/predicthq.js` | Every 12h + startup | Community events, classes, workshops, festivals (aggregates 19+ sources incl. Eventbrite) | `PREDICTHQ_API_KEY` |
 | Chicago Open Data | `server/src/ingestion/chicago-open-data.js` | Daily 3am + startup | Park permits, outdoor events | None (public) |
 | Suburban iCal | `server/src/ingestion/suburbs-ical.js` | Daily 3:30am | Evanston, Oak Park, Naperville, Schaumburg city event calendars | None (public iCal) |
+| Google Places | `server/src/ingestion/google-places.js` | Manual trigger | Restaurants, cafes, bars, parks, museums, spas, cinemas, shopping | `GOOGLE_PLACES_API_KEY` |
 
 > **Eventbrite API deprecated (2023)** — returns 404 for all search requests. Do not attempt to re-add it.
 
@@ -678,6 +724,8 @@ Admin/VerificationScoreBar.jsx  Visual 0-100 score with per-check breakdown
 Onboarding/OnboardingModal.jsx  4-step first-login wizard (categories, mobility, group, home)
 Weather/WeatherBadge.jsx        Outdoor event weather indicator in EventDetailPanel
 Weather/WeatherWidget.jsx       Today + weekend forecast toggle in EventList header
+Places/PlaceDetailPanel.jsx     Slide-in panel: name, rating, hours, price, insider tip, website
+PlanDay/PlanPlaceCard.jsx       Compact place card with + Add for Plan a Day
 ```
 
 ### AI Agents (`server/src/services/ai/agents/`)
@@ -788,6 +836,7 @@ Block check runs in both directions: if A blocks B or B blocks A, neither can me
 | `PORT` | Set automatically by Railway in prod; use 3001 locally | Auto |
 | `FRONTEND_URL` | Vercel URL (for CORS fallback) | Yes in prod |
 | `ANTHROPIC_API_KEY` | console.anthropic.com → API Keys | Required for recommendations + itinerary |
+| `GOOGLE_PLACES_API_KEY` | console.cloud.google.com → Credentials | Required for Places ingestion |
 
 ### Client (`/client/.env`)
 | Variable | Source | Required |
@@ -938,5 +987,6 @@ Prevents unsolicited spam. The first message goes through; subsequent messages f
 | P3: Shareable Itinerary Links (/plan/share/:token) | ✅ |
 | P3: Data Quality Agent + Suburban iCal Ingestion | ✅ |
 | P3: Polish (meta tags, empty states, error states) | ✅ |
+| P3: Places feature (table + ingestion + map markers + detail panel + Plan a Day) | ✅ |
 | Phase 4: Friday Evening Digest (Resend email) | ⬜ — documented only |
 | Phase 4: Weekend Reminder (Supabase Edge Functions push) | ⬜ — documented only |

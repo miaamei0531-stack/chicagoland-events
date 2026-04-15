@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth.js';
 import { usePlanStore } from '../../store/plan.js';
 import DateScrollPicker from './DateScrollPicker.jsx';
 import PlanEventCard from './PlanEventCard.jsx';
+import PlanPlaceCard from './PlanPlaceCard.jsx';
 import MyDayList from './MyDayList.jsx';
 import ItineraryView, { LoadingState } from './ItineraryView.jsx';
 
@@ -22,6 +23,7 @@ export default function PlanDaySidebar({ onSelectEvent, onClose }) {
   const [weatherMap, setWeatherMap] = useState({});
   const [building, setBuilding] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [nearbyPlaces, setNearbyPlaces] = useState([]);
 
   // Load weather for next 14 days (once)
   useEffect(() => {
@@ -57,9 +59,20 @@ export default function PlanDaySidebar({ onSelectEvent, onClose }) {
     }
   }, [selectedDate, setDateEvents, setDateEventsLoading]);
 
+  // Fetch nearby places (top 5 by rating)
+  const loadNearbyPlaces = useCallback(async () => {
+    try {
+      const places = await api.getPlaces({ limit: 5 });
+      setNearbyPlaces(places);
+    } catch {
+      setNearbyPlaces([]);
+    }
+  }, []);
+
   useEffect(() => {
     loadDateEvents();
-  }, [loadDateEvents]);
+    loadNearbyPlaces();
+  }, [loadDateEvents, loadNearbyPlaces]);
 
   // Build itinerary — sort chronologically before sending
   const handleBuildItinerary = useCallback(async () => {
@@ -206,6 +219,36 @@ export default function PlanDaySidebar({ onSelectEvent, onClose }) {
                 </div>
               )}
             </section>
+
+            {/* Nearby Places */}
+            {nearbyPlaces.length > 0 && (
+              <section>
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xs font-semibold theme-muted uppercase tracking-widest">
+                    Nearby Places
+                  </h3>
+                  <span className="text-[10px] theme-faint">{nearbyPlaces.length} top rated</span>
+                </div>
+                <div className="space-y-1.5">
+                  {nearbyPlaces.map((place) => (
+                    <PlanPlaceCard
+                      key={place.id}
+                      place={place}
+                      isAdded={myDayIds.has(`place-${place.id}`)}
+                      onAdd={(p) => addToMyDay({
+                        id: `place-${p.id}`,
+                        title: p.name,
+                        venue_name: p.address,
+                        start_datetime: null,
+                        is_place: true,
+                        place_id: p.id,
+                      })}
+                      onRemove={() => removeFromMyDay(`place-${place.id}`)}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
           </>
         )}
       </div>

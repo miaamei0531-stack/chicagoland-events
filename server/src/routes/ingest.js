@@ -13,6 +13,7 @@ const chicagoOpenData = require('../ingestion/chicago-open-data');
 const predicthq = require('../ingestion/predicthq');
 const suburbsIcal = require('../ingestion/suburbs-ical');
 const { run: runDataQuality } = require('../services/ai/agents/dataQualityAgent');
+const { ingestGooglePlaces } = require('../ingestion/google-places');
 
 function fireAndForget(name, fn, res) {
   res.json({ ok: true, message: `${name} ingestion started in background — check Railway logs for results` });
@@ -41,6 +42,10 @@ router.post('/suburbs', (req, res) => {
 
 router.post('/data-quality', (req, res) => {
   fireAndForget('data-quality', runDataQuality, res);
+});
+
+router.post('/google-places', (req, res) => {
+  fireAndForget('google-places', ingestGooglePlaces, res);
 });
 
 module.exports = router;
