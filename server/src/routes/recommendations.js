@@ -4,6 +4,7 @@ const { checkAuth } = require('../middleware/auth');
 const { getWeatherForDate } = require('../services/weather');
 const { generateRecommendations } = require('../services/ai/agents/recommendationAgent');
 const { attachCoords } = require('../utils/parseCoordinates');
+const { filterJunkEvents } = require('./events');
 
 const CHICAGO_LAT = 41.8781;
 const CHICAGO_LNG = -87.6298;
@@ -86,7 +87,7 @@ router.get('/', checkAuth, async (req, res) => {
   }
 
   const { data: rawEvents } = await query;
-  const events = (rawEvents || []).map(attachCoords);
+  const events = filterJunkEvents((rawEvents || []).map(attachCoords));
 
   // 5. Filter by distance from home
   const nearbyEvents = events.filter((e) => {

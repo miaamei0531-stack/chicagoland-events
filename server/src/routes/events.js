@@ -2,6 +2,15 @@ const router = require('express').Router();
 const supabase = require('../services/supabase');
 const { attachCoords } = require('../utils/parseCoordinates');
 
+// Filter out permit/admin entries that aren't real events
+const ADMIN_PREFIXES = ['permit -', 'administrative reservation', 'internal hold'];
+function filterJunkEvents(events) {
+  return events.filter((e) => {
+    const t = (e.title || '').toLowerCase();
+    return !ADMIN_PREFIXES.some((prefix) => t.startsWith(prefix) || t.includes(prefix));
+  });
+}
+
 function haversineKm(lat1, lng1, lat2, lng2) {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -53,14 +62,7 @@ router.get('/', async (req, res) => {
     const { data, error } = await query;
     if (error) throw error;
 
-    // Filter out permit/admin entries that aren't real events
-    const ADMIN_PREFIXES = ['permit -', 'administrative reservation', 'internal hold'];
-    const filtered = data.filter((e) => {
-      const t = (e.title || '').toLowerCase();
-      return !ADMIN_PREFIXES.some((prefix) => t.startsWith(prefix) || t.includes(prefix));
-    });
-
-    res.json(filtered.map(attachCoords));
+    res.json(filterJunkEvents(data.map(attachCoords)));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch events' });
@@ -127,7 +129,7 @@ router.get('/within-bounds', async (req, res) => {
       results = results.filter((e) => e.neighborhood?.toLowerCase().includes(nbLower));
     }
 
-    res.json(results);
+    res.json(filterJunkEvents(results));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch events within bounds' });
@@ -154,3 +156,4 @@ router.get('/:id', async (req, res) => {
 });
 
 module.exports = router;
+module.exports.filterJunkEvents = filterJunkEvents;
