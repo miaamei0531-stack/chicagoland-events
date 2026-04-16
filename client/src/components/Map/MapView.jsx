@@ -54,9 +54,10 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
   const [todayWeather, setTodayWeather] = useState(null);
   // "For You" toggle — only active when user is logged in
   const [forYouOn, setForYouOn] = useState(true);
-  // Events/Places visibility toggles
+  // Events/Places visibility toggles — places OFF by default, only when zoomed in
   const [showEvents, setShowEvents] = useState(true);
-  const [showPlaces, setShowPlaces] = useState(true);
+  const [showPlaces, setShowPlaces] = useState(false);
+  const [zoomedIn, setZoomedIn] = useState(false); // true when zoom >= 14
   // Selected place (separate from selectedEventId)
   const [selectedPlaceId, setSelectedPlaceId] = useState(null);
 
@@ -109,12 +110,16 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
         if (endDate) params.end_date = endDate;
       }
 
-      // Load events and places in parallel
+      // Load events always; only load places when zoomed in + toggled on
       const eventsPromise = api.getEventsWithinBounds(params);
-      const placesPromise = api.getPlacesWithinBounds({
-        north: params.north, south: params.south,
-        east: params.east, west: params.west,
-      });
+      const currentZoom = map.current.getZoom();
+      const shouldLoadPlaces = currentZoom >= 14;
+      const placesPromise = shouldLoadPlaces
+        ? api.getPlacesWithinBounds({
+            north: params.north, south: params.south,
+            east: params.east, west: params.west,
+          })
+        : Promise.resolve([]);
 
       const [events, places] = await Promise.all([eventsPromise, placesPromise.catch(() => [])]);
 
@@ -275,27 +280,29 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
         data: { type: 'FeatureCollection', features: [] },
       });
 
-      // Square marker — outer glow
+      // Place marker — subtle glow
       map.current.addLayer({
         id: 'place-glow',
         type: 'circle',
         source: 'places',
+        layout: { visibility: 'none' },
         paint: {
           'circle-color': PLACE_COLOR,
-          'circle-radius': 14,
-          'circle-opacity': 0.15,
+          'circle-radius': 10,
+          'circle-opacity': 0.12,
         },
       });
 
-      // Square marker — main (using symbol with a square icon via circle for now)
+      // Place marker — small dot
       map.current.addLayer({
         id: 'place-marker',
         type: 'circle',
         source: 'places',
+        layout: { visibility: 'none' },
         paint: {
           'circle-color': PLACE_COLOR,
-          'circle-radius': 7,
-          'circle-stroke-width': 2,
+          'circle-radius': 5,
+          'circle-stroke-width': 1.5,
           'circle-stroke-color': '#ffffff',
           'circle-opacity': 0.95,
         },
@@ -339,6 +346,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     map.current.on('moveend', () => {
       clearTimeout(boundsTimer.current);
       boundsTimer.current = setTimeout(() => loadEventsRef.current?.(), 400);
+      setZoomedIn(map.current.getZoom() >= 14);
     });
 
     return () => { clearTimeout(boundsTimer.current); };
@@ -362,18 +370,15 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     map.current.flyTo({ center: [center.lng, center.lat], zoom: 13, duration: 800 });
   }, [neighborhood]);
 
-  // Toggle event/place layer visibility
+  // Toggle place layer visibility — only show when zoomed in AND toggled on
   useEffect(() => {
     if (!map.current) return;
-    const eventLayers = ['event-clusters', 'event-cluster-count', 'event-unclustered-glow', 'event-unclustered'];
     const placeLayers = ['place-glow', 'place-marker'];
-    eventLayers.forEach((id) => {
-      if (map.current.getLayer(id)) map.current.setLayoutProperty(id, 'visibility', showEvents ? 'visible' : 'none');
-    });
+    const visible = showPlaces && zoomedIn;
     placeLayers.forEach((id) => {
-      if (map.current.getLayer(id)) map.current.setLayoutProperty(id, 'visibility', showPlaces ? 'visible' : 'none');
+      if (map.current.getLayer(id)) map.current.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
     });
-  }, [showEvents, showPlaces]);
+  }, [showPlaces, zoomedIn]);
 
   // Reload markers when filters or trip date/mode changes
   useEffect(() => {
@@ -501,26 +506,20 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     <div className="relative flex-1 h-full">
       <div ref={mapContainer} className="w-full h-full" />
 
-      {/* Events / Places toggle */}
-      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex gap-1 theme-surface rounded-full theme-shadow border theme-border-s p-0.5">
-        <button
-          onClick={() => setShowEvents((v) => !v)}
-          className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-            showEvents ? 'bg-[var(--accent)] text-white' : 'theme-muted'
-          }`}
-        >
-          Events {showEvents ? '✓' : ''}
-        </button>
-        <button
-          onClick={() => setShowPlaces((v) => !v)}
-          className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-            showPlaces ? 'text-white' : 'theme-muted'
-          }`}
-          style={showPlaces ? { backgroundColor: PLACE_COLOR } : {}}
-        >
-          Places {showPlaces ? '✓' : ''}
-        </button>
-      </div>
+      {/* Places toggle — only visible when zoomed in enough */}
+      {zoomedIn && (
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex gap-1 theme-surface rounded-full theme-shadow border theme-border-s p-0.5">
+          <button
+            onClick={() => setShowPlaces((v) => !v)}
+            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+              showPlaces ? 'text-white' : 'theme-muted'
+            }`}
+            style={showPlaces ? { backgroundColor: PLACE_COLOR } : {}}
+          >
+            {showPlaces ? '🍽 Hide Places' : '🍽 Show Places'}
+          </button>
+        </div>
+      )}
 
       {/* Category legend — top-left on mobile, hidden on desktop (shown in filters sidebar) */}
       <div className="absolute top-3 left-3 z-10 md:hidden theme-surface rounded-2xl theme-shadow p-2 border theme-border-s">
