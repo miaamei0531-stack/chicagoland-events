@@ -83,7 +83,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
   const [forYouOn, setForYouOn] = useState(true);
   // Places: starts empty (nothing selected). Clicking a pill adds that category.
   // Places are visible when at least one category is selected AND zoomed in.
-  const [zoomedIn, setZoomedIn] = useState(false); // true when zoom >= 14
+  const [zoomedIn, setZoomedIn] = useState(false); // true when zoom >= 12
   const [activePlaceCategories, setActivePlaceCategories] = useState(new Set());
   const [rawPlaces, setRawPlaces] = useState([]); // raw places from last API fetch
   // Selected place (separate from selectedEventId)
@@ -141,7 +141,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
       // Load events always; only load places when zoomed in + toggled on
       const eventsPromise = api.getEventsWithinBounds(params);
       const currentZoom = map.current.getZoom();
-      const shouldLoadPlaces = currentZoom >= 14;
+      const shouldLoadPlaces = currentZoom >= 12;
       const placesPromise = shouldLoadPlaces
         ? api.getPlacesWithinBounds({
             north: params.north, south: params.south,
@@ -357,7 +357,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     map.current.on('moveend', () => {
       clearTimeout(boundsTimer.current);
       boundsTimer.current = setTimeout(() => loadEventsRef.current?.(), 400);
-      setZoomedIn(map.current.getZoom() >= 14);
+      setZoomedIn(map.current.getZoom() >= 12);
     });
 
     return () => { clearTimeout(boundsTimer.current); };
