@@ -75,6 +75,8 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
   const { tripMode, tripDate, tripEvents, routeMode } = useTripStore();
   const isPlanOpen = usePlanStore((s) => s.isPlanOpen);
   const planDate = usePlanStore((s) => s.selectedDate);
+  const myDayEvents = usePlanStore((s) => s.myDayEvents);
+  const planDayMarkersRef = useRef([]); // DOM markers for numbered My Day stops
   const { user } = useAuth();
 
   // Weather pill state (today's weather, loaded once)
@@ -557,6 +559,83 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
       })
       .catch(() => {});
   }, [tripMode, tripEvents, routeMode]);
+
+  // Draw Plan a Day route + numbered stop markers
+  useEffect(() => {
+    if (!map.current) return;
+
+    // Clean up previous plan route + markers
+    if (map.current.getLayer('plan-route')) map.current.removeLayer('plan-route');
+    if (map.current.getSource('plan-route')) map.current.removeSource('plan-route');
+    planDayMarkersRef.current.forEach((m) => m.remove());
+    planDayMarkersRef.current = [];
+
+    if (!isPlanOpen || myDayEvents.length === 0) return;
+
+    // Get coordinates from My Day events (skip places without coords)
+    const stops = myDayEvents
+      .filter((e) => e.coordinates?.coordinates || (!e.is_place && e.coordinates))
+      .map((e) => {
+        const coords = e.coordinates?.coordinates;
+        return coords ? { lng: coords[0], lat: coords[1], title: e.title } : null;
+      })
+      .filter(Boolean);
+
+    if (stops.length === 0) return;
+
+    // Add numbered markers for each stop
+    stops.forEach((stop, i) => {
+      const el = document.createElement('div');
+      el.style.cssText = `width:24px;height:24px;border-radius:50%;background:#E8601C;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;cursor:default;`;
+      el.textContent = String(i + 1);
+      el.title = stop.title;
+      const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })
+        .setLngLat([stop.lng, stop.lat])
+        .addTo(map.current);
+      planDayMarkersRef.current.push(marker);
+    });
+
+    // Draw route line between stops (need 2+ waypoints)
+    if (stops.length < 2) return;
+    const waypointStr = stops.map((s) => `${s.lng},${s.lat}`).join(';');
+    const token = import.meta.env.VITE_MAPBOX_TOKEN;
+    const url = `https://api.mapbox.com/directions/v5/mapbox/driving/${waypointStr}?geometries=geojson&overview=full&access_token=${token}`;
+
+    fetch(url)
+      .then((r) => r.json())
+      .then((data) => {
+        const route = data.routes?.[0]?.geometry;
+        if (!route || !map.current) return;
+        if (map.current.getSource('plan-route')) return; // already added by a concurrent call
+        map.current.addSource('plan-route', {
+          type: 'geojson',
+          data: { type: 'Feature', geometry: route },
+        });
+        map.current.addLayer({
+          id: 'plan-route',
+          type: 'line',
+          source: 'plan-route',
+          layout: { 'line-join': 'round', 'line-cap': 'round' },
+          paint: {
+            'line-color': '#E8601C',
+            'line-width': 3,
+            'line-opacity': 0.7,
+            'line-dasharray': [3, 2],
+          },
+        }, 'event-clusters');
+
+        // Fit map to show the full route
+        const coords = route.coordinates;
+        if (coords.length > 1) {
+          const bounds = coords.reduce(
+            (b, c) => b.extend(c),
+            new mapboxgl.LngLatBounds(coords[0], coords[0])
+          );
+          map.current.fitBounds(bounds, { padding: { top: 60, bottom: 60, left: 60, right: 420 }, duration: 800 });
+        }
+      })
+      .catch(() => {});
+  }, [isPlanOpen, myDayEvents]);
 
   return (
     <div className="relative flex-1 h-full">
