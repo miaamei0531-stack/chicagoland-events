@@ -45,10 +45,10 @@ mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
 const DAY_STYLE = 'mapbox://styles/mapbox/light-v11';
 const DARK_STYLE = 'mapbox://styles/mapbox/dark-v11';
-// Cluster colors by size
-const CLUSTER_SMALL  = '#E8601C'; // orange  — < 10
-const CLUSTER_MEDIUM = '#D97706'; // amber   — < 50
-const CLUSTER_LARGE  = '#2C7A5C'; // green   — 50+
+// Cluster colors — neutral gray so they read as "zoom in to see more"
+const CLUSTER_SMALL  = '#9CA3AF'; // gray-400  — < 10
+const CLUSTER_MEDIUM = '#6B7280'; // gray-500  — < 50
+const CLUSTER_LARGE  = '#4B5563'; // gray-600  — 50+
 
 // Build a Mapbox match expression: ['match', ['get', 'primary_category'], cat1, hex1, cat2, hex2, ..., fallback]
 function categoryColorExpression() {

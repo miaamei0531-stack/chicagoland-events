@@ -213,11 +213,11 @@ Defined in `client/src/utils/categoryColors.js` — import `CATEGORY_HEX`, `CATE
 ### Map Cluster Colors
 | Size | Color | Hex |
 |---|---|---|
-| < 10 events | Orange | `#E8601C` |
-| 10–49 events | Amber | `#D97706` |
-| 50+ events | Green | `#2C7A5C` |
+| < 10 events | Gray | `#9CA3AF` |
+| 10–49 events | Gray | `#6B7280` |
+| 50+ events | Dark Gray | `#4B5563` |
 
-Cluster config: `clusterMaxZoom: 12`, `clusterRadius: 35`. Clusters break apart at zoom 13 to reduce count mismatch when zooming in (viewport-based data reloads).
+Cluster config: `clusterMaxZoom: 12`, `clusterRadius: 35`. Clusters are neutral gray to read as "zoom in to see more" rather than implying a precise count. Counts may differ from what you see zoomed in because viewport-based data loading fetches different events at different zoom levels.
 
 ### Dark Mode
 - Toggle stored in `useThemeStore` (Zustand, persisted to localStorage as `chi-events-theme`)
