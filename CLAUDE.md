@@ -771,6 +771,14 @@ Filters in `useFiltersStore` are consumed by two independent consumers:
 
 Both react to filter changes independently. Map reloads via `useEffect` watching store values.
 
+### Place Category Filtering Pattern
+Place category filters (Restaurant, Coffee, Bar, etc.) are **decoupled** from `loadEvents`. The data flow:
+1. `loadEvents` fetches all places from API → stores raw data in `rawPlacesRef`
+2. A separate `useEffect` watches `activePlaceCategories` → filters `rawPlacesRef` → sets filtered GeoJSON on `map.getSource('places')`
+3. Clicking a place pill only triggers step 2 (instant, no API call) — NOT step 1
+
+**Why separate?** `activePlaceCategories` is a `Set`. Putting a Set in `useCallback` deps causes the callback to be recreated on every change (Object.is comparison fails for different Set refs). If `loadEvents` depended on it, every pill click would trigger a full event+place API reload, causing markers to flash-disappear.
+
 ### Neighborhood Filter Behavior
 When a neighborhood is selected:
 1. Map flies to the neighborhood center (hardcoded in `NEIGHBORHOOD_CENTERS` in `MapView.jsx`)
@@ -968,6 +976,8 @@ Prevents unsolicited spam. The first message goes through; subsequent messages f
 9. **No unsigned admin routes in production.** `POST /api/v1/ingest/*` routes should be protected with `checkAdmin` before going fully public.
 
 10. **No amending published commits.** Create new commits. Pre-commit hooks may fail and amending would corrupt history.
+
+11. **No mutable objects (Set, Map, Array) in `useCallback`/`useEffect` dependency arrays.** React compares deps with `Object.is()` — different object references are always unequal, causing the callback to be recreated on every render. This triggers downstream effects (data reloads, map re-renders) that flash-clear UI. Instead, store mutable filter state in a ref and apply it in a separate effect. The `activePlaceCategories` bug (2026-04-16) was caused by a `Set` in `loadEvents` deps — clicking a place pill triggered a full event reload that cleared all markers.
 
 ---
 

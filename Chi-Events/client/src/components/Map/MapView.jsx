@@ -69,6 +69,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
   const featuresRef = useRef([]); // store loaded features for flyTo lookups
   const homeMarkerRef = useRef(null);
   const loadEventsRef = useRef(null); // always points to the latest loadEvents closure
+  const rawPlacesRef = useRef([]); // raw places data from last API fetch (unfiltered)
   const { categories, startDate, endDate, searchQuery, neighborhood, radius } = useFiltersStore();
   const dark = useThemeStore((s) => s.dark);
   const { tripMode, tripDate, tripEvents, routeMode } = useTripStore();
@@ -178,31 +179,12 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
         map.current.getSource('events').setData(geojson);
       }
 
-      // Places GeoJSON — filter by active place categories
-      const placesGeojson = { type: 'FeatureCollection', features: [] };
-      places.forEach((p) => {
-        if (!p.coordinates?.coordinates) return;
-        const pCat = Array.isArray(p.category) ? p.category[0] : null;
-        if (pCat && !activePlaceCategories.has(pCat)) return;
-        placesGeojson.features.push({
-          type: 'Feature',
-          geometry: { type: 'Point', coordinates: p.coordinates.coordinates },
-          properties: {
-            id: p.id,
-            name: p.name,
-            primary_category: Array.isArray(p.category) ? p.category[0] : null,
-            rating: p.rating,
-            price_level: p.price_level,
-          },
-        });
-      });
-      if (map.current.getSource('places')) {
-        map.current.getSource('places').setData(placesGeojson);
-      }
+      // Store raw places for category filtering (done in separate effect)
+      rawPlacesRef.current = places;
     } catch (err) {
       console.error('Failed to load map data:', err);
     }
-  }, [tripMode, tripDate, categories, startDate, endDate, searchQuery, neighborhood, radius, isPlanOpen, planDate, activePlaceCategories]);
+  }, [tripMode, tripDate, categories, startDate, endDate, searchQuery, neighborhood, radius, isPlanOpen, planDate]);
 
   // Keep ref in sync so the moveend handler always calls the latest closure
   useEffect(() => { loadEventsRef.current = loadEvents; }, [loadEvents]);
@@ -397,6 +379,31 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     if (!center) return;
     map.current.flyTo({ center: [center.lng, center.lat], zoom: 13, duration: 800 });
   }, [neighborhood]);
+
+  // Filter places by active categories and update map source.
+  // This is DECOUPLED from loadEvents — clicking a place pill does NOT
+  // reload events. It only re-filters the already-loaded places data.
+  useEffect(() => {
+    if (!map.current || !map.current.getSource('places')) return;
+    const placesGeojson = { type: 'FeatureCollection', features: [] };
+    rawPlacesRef.current.forEach((p) => {
+      if (!p.coordinates?.coordinates) return;
+      const pCat = Array.isArray(p.category) ? p.category[0] : null;
+      if (pCat && !activePlaceCategories.has(pCat)) return;
+      placesGeojson.features.push({
+        type: 'Feature',
+        geometry: { type: 'Point', coordinates: p.coordinates.coordinates },
+        properties: {
+          id: p.id,
+          name: p.name,
+          primary_category: pCat,
+          rating: p.rating,
+          price_level: p.price_level,
+        },
+      });
+    });
+    map.current.getSource('places').setData(placesGeojson);
+  }, [activePlaceCategories]);
 
   // Toggle place layer visibility — only show when zoomed in AND toggled on
   useEffect(() => {
