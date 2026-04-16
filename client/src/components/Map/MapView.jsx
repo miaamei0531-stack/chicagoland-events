@@ -436,9 +436,23 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
 
     const [lng, lat] = feature.geometry.coordinates;
 
-    map.current.flyTo({ center: [lng, lat], zoom: Math.max(map.current.getZoom(), 14), duration: 600 });
+    // Offset the center to account for panels covering the right side of the map.
+    // When Plan sidebar (~380px) or Event Detail (~384px) are open, shift the
+    // target point left so the event appears in the visible portion of the map.
+    const container = map.current.getContainer();
+    const mapWidth = container.offsetWidth;
+    // Estimate right-side panel coverage (Plan sidebar + detail panel can stack)
+    const panelWidth = isPlanOpen ? 380 : 0;
+    const offsetX = panelWidth > 0 ? panelWidth / 2 : 0;
+    // Convert pixel offset to a flyTo offset: [x, y] where positive x shifts right
+    map.current.flyTo({
+      center: [lng, lat],
+      zoom: Math.max(map.current.getZoom(), 14),
+      duration: 600,
+      offset: [-offsetX, 0], // shift left to center in visible area
+    });
 
-    // Add a temporary pulse layer
+    // Add a prominent pulse highlight
     const pulseId = 'selected-pulse';
     if (map.current.getLayer(pulseId)) map.current.removeLayer(pulseId);
     if (map.current.getSource(pulseId)) map.current.removeSource(pulseId);
@@ -447,20 +461,21 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
       type: 'geojson',
       data: { type: 'Feature', geometry: { type: 'Point', coordinates: [lng, lat] } },
     });
+    // Outer glow ring — large and visible
     map.current.addLayer({
       id: pulseId,
       type: 'circle',
       source: pulseId,
       paint: {
-        'circle-radius': 18,
-        'circle-color': 'var(--accent, #d4a843)',
-        'circle-opacity': 0.35,
-        'circle-stroke-width': 2,
-        'circle-stroke-color': 'var(--accent, #d4a843)',
-        'circle-stroke-opacity': 0.8,
+        'circle-radius': 28,
+        'circle-color': '#E8601C',
+        'circle-opacity': 0.25,
+        'circle-stroke-width': 3,
+        'circle-stroke-color': '#E8601C',
+        'circle-stroke-opacity': 0.9,
       },
     }, 'event-unclustered-glow');
-  }, [selectedEventId]);
+  }, [selectedEventId, isPlanOpen]);
 
   // Fetch today's weather for the map pill overlay
   useEffect(() => {
