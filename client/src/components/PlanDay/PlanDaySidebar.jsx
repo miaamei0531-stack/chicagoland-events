@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState } from 'react';
+import { useEffect, useCallback, useState, useRef } from 'react';
 import { api } from '../../services/api.js';
 import { supabase } from '../../services/supabase.js';
 import { useAuth } from '../../hooks/useAuth.js';
@@ -11,7 +11,7 @@ import ItineraryView, { LoadingState } from './ItineraryView.jsx';
 
 const BASE = import.meta.env.VITE_API_BASE_URL;
 
-export default function PlanDaySidebar({ onSelectEvent, onClose }) {
+export default function PlanDaySidebar({ selectedEventId, onSelectEvent, onClose }) {
   const { user } = useAuth();
   const {
     selectedDate, setSelectedDate,
@@ -24,6 +24,14 @@ export default function PlanDaySidebar({ onSelectEvent, onClose }) {
   const [building, setBuilding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [nearbyPlaces, setNearbyPlaces] = useState([]);
+  const scrollContainerRef = useRef(null);
+
+  // Scroll selected event card into view when map marker is clicked
+  useEffect(() => {
+    if (!selectedEventId || !scrollContainerRef.current) return;
+    const el = scrollContainerRef.current.querySelector(`[data-event-id="${selectedEventId}"]`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, [selectedEventId]);
 
   // Load weather for next 14 days (once)
   useEffect(() => {
@@ -135,7 +143,7 @@ export default function PlanDaySidebar({ onSelectEvent, onClose }) {
       </div>
 
       {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
+      <div ref={scrollContainerRef} className="flex-1 overflow-y-auto px-3 py-3 space-y-4">
 
         {/* Date picker */}
         <section>
@@ -207,14 +215,16 @@ export default function PlanDaySidebar({ onSelectEvent, onClose }) {
               {!dateEventsLoading && dateEvents.length > 0 && (
                 <div className="space-y-1.5">
                   {dateEvents.map((event) => (
-                    <PlanEventCard
-                      key={event.id}
-                      event={event}
-                      isAdded={myDayIds.has(event.id)}
-                      onAdd={addToMyDay}
-                      onRemove={removeFromMyDay}
-                      onSelect={onSelectEvent}
-                    />
+                    <div key={event.id} data-event-id={event.id}>
+                      <PlanEventCard
+                        event={event}
+                        isAdded={myDayIds.has(event.id)}
+                        isSelected={selectedEventId === event.id}
+                        onAdd={addToMyDay}
+                        onRemove={removeFromMyDay}
+                        onSelect={onSelectEvent}
+                      />
+                    </div>
                   ))}
                 </div>
               )}

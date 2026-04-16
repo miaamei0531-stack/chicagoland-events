@@ -52,6 +52,7 @@ export default function Home() {
         {isPlanOpen ? (
           <div className="hidden md:flex flex-col w-[380px] shrink-0 border-l theme-border-s overflow-hidden">
             <PlanDaySidebar
+              selectedEventId={selectedEventId}
               onSelectEvent={setSelectedEventId}
               onClose={closePlan}
             />
@@ -91,6 +92,7 @@ export default function Home() {
         }`}>
           {isPlanOpen ? (
             <PlanDaySidebar
+              selectedEventId={selectedEventId}
               onSelectEvent={(id) => { setSelectedEventId(id); }}
               onClose={closePlan}
             />

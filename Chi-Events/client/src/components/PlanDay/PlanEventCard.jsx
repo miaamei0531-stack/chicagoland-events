@@ -1,14 +1,16 @@
 import { CATEGORY_COLORS } from '../../utils/categoryColors.js';
 import { formatDateTime } from '../../utils/formatDate.js';
 
-export default function PlanEventCard({ event, isAdded, onAdd, onRemove, onSelect }) {
+export default function PlanEventCard({ event, isAdded, isSelected, onAdd, onRemove, onSelect }) {
   if (!event) return null;
 
   return (
     <button
       onClick={() => onSelect(event.id)}
       className={`w-full text-left p-3 rounded-xl border transition-all ${
-        isAdded
+        isSelected
+          ? 'border-[var(--accent)] ring-2 ring-[var(--accent)] ring-opacity-30 theme-surface'
+          : isAdded
           ? 'border-l-[3px] border-l-green-500 border-[var(--border-subtle)] theme-surface'
           : 'border-[var(--border-subtle)] theme-surface hover:border-[var(--accent)]'
       }`}
