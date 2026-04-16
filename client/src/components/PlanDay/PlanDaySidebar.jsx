@@ -3,6 +3,7 @@ import { api } from '../../services/api.js';
 import { supabase } from '../../services/supabase.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import { usePlanStore } from '../../store/plan.js';
+import { useFiltersStore } from '../../store/filters.js';
 import DateScrollPicker from './DateScrollPicker.jsx';
 import PlanEventCard from './PlanEventCard.jsx';
 import PlanPlaceCard from './PlanPlaceCard.jsx';
@@ -13,6 +14,7 @@ const BASE = import.meta.env.VITE_API_BASE_URL;
 
 export default function PlanDaySidebar({ selectedEventId, onSelectEvent, onClose }) {
   const { user } = useAuth();
+  const { categories, searchQuery } = useFiltersStore();
   const {
     selectedDate, setSelectedDate,
     dateEvents, setDateEvents, dateEventsLoading, setDateEventsLoading,
@@ -56,17 +58,20 @@ export default function PlanDaySidebar({ selectedEventId, onSelectEvent, onClose
     loadWeather();
   }, []);
 
-  // Fetch events when date changes
+  // Fetch events when date or filters change
   const loadDateEvents = useCallback(async () => {
     setDateEventsLoading(true);
     try {
-      const events = await api.getEvents({ date: selectedDate, limit: 50 });
+      const params = { date: selectedDate, limit: 50 };
+      if (categories.length) params.category = categories;
+      if (searchQuery) params.q = searchQuery;
+      const events = await api.getEvents(params);
       setDateEvents(events);
     } catch (err) {
       console.error('Failed to load events for date:', err);
       setDateEvents([]);
     }
-  }, [selectedDate, setDateEvents, setDateEventsLoading]);
+  }, [selectedDate, categories, searchQuery, setDateEvents, setDateEventsLoading]);
 
   // Fetch nearby places (top 5 by rating)
   const loadNearbyPlaces = useCallback(async () => {
