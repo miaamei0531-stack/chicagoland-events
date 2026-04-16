@@ -562,34 +562,37 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     <div className="relative flex-1 h-full">
       <div ref={mapContainer} className="w-full h-full" />
 
-      {/* Places category pills — always visible */}
-      {(
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 theme-surface rounded-2xl theme-shadow border theme-border-s px-2 py-1.5 flex items-center gap-1.5 max-w-[90vw] overflow-x-auto">
-          <span className="text-[10px] theme-faint whitespace-nowrap shrink-0">Nearby:</span>
-          {ALL_PLACE_CATEGORIES.map((cat) => {
-            const isActive = activePlaceCategories.has(cat);
-            return (
-              <button
-                key={cat}
-                onClick={() => {
-                  setActivePlaceCategories((prev) => {
-                    const next = new Set(prev);
-                    if (next.has(cat)) next.delete(cat);
-                    else next.add(cat);
-                    return next;
-                  });
-                }}
-                className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap transition-all ${
-                  isActive ? 'text-white' : 'theme-muted bg-gray-100 dark:bg-gray-800'
-                }`}
-                style={isActive ? { backgroundColor: PLACE_CATEGORY_HEX[cat] } : {}}
-              >
-                {cat}
-              </button>
-            );
-          })}
-        </div>
-      )}
+      {/* Places category pills — shrinks when detail panel is open */}
+      <div className={`absolute top-2 z-10 theme-surface rounded-2xl theme-shadow border theme-border-s py-1 flex items-center gap-1 overflow-x-auto transition-all ${
+        selectedEventId
+          ? 'left-2 px-1.5 max-w-[50vw]'
+          : 'left-1/2 -translate-x-1/2 px-2 max-w-[90vw]'
+      }`}>
+        {!selectedEventId && <span className="text-[10px] theme-faint whitespace-nowrap shrink-0 pl-0.5">Nearby:</span>}
+        {ALL_PLACE_CATEGORIES.map((cat) => {
+          const isActive = activePlaceCategories.has(cat);
+          return (
+            <button
+              key={cat}
+              onClick={() => {
+                setActivePlaceCategories((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(cat)) next.delete(cat);
+                  else next.add(cat);
+                  return next;
+                });
+              }}
+              className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium whitespace-nowrap transition-all ${
+                isActive ? 'text-white' : 'theme-muted bg-gray-100 dark:bg-gray-800'
+              }`}
+              style={isActive ? { backgroundColor: PLACE_CATEGORY_HEX[cat] } : {}}
+              title={cat}
+            >
+              {selectedEventId ? cat.slice(0, 3) : cat}
+            </button>
+          );
+        })}
+      </div>
 
       {/* Category legend — top-left on mobile, hidden on desktop (shown in filters sidebar) */}
       <div className="absolute top-3 left-3 z-10 md:hidden theme-surface rounded-2xl theme-shadow p-2 border theme-border-s">
