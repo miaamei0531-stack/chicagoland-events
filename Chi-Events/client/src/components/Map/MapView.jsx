@@ -547,8 +547,8 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     <div className="relative flex-1 h-full">
       <div ref={mapContainer} className="w-full h-full" />
 
-      {/* Places category pills — only visible when zoomed in */}
-      {zoomedIn && (
+      {/* Places category pills — always visible */}
+      {(
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 theme-surface rounded-2xl theme-shadow border theme-border-s px-2 py-1.5 flex items-center gap-1.5 max-w-[90vw] overflow-x-auto">
           <span className="text-[10px] theme-faint whitespace-nowrap shrink-0">Nearby:</span>
           {ALL_PLACE_CATEGORIES.map((cat) => {
