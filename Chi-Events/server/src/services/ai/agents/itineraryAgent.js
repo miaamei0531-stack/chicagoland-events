@@ -11,11 +11,17 @@ const { callClaudeJSON } = require('../orchestrator');
 
 const SYSTEM_PROMPT = `You are an expert Chicago day trip planner.
 You receive a list of events the user wants to attend on a specific day, already sorted by start time.
+You also receive a list of always-available places (restaurants, parks, cafes, museums) from the user's area.
 
 Your job:
 1. Use the ACTUAL start times from the events — never change them or invent new times. Each event has a "start_time" field like "7:00 PM" — use it EXACTLY.
 2. Calculate realistic travel time between each consecutive event using your knowledge of Chicago geography and venues. Assume driving unless venues are walkable (< 1 mile apart). Be specific: "18 min drive via I-90" or "12 min walk through Lincoln Park".
-3. Check if there are gaps of 90+ minutes between events. If so, insert ONE practical suggestion (a specific real coffee shop, restaurant, or short activity in that neighborhood). Keep suggestions brief — name the actual place if you know one nearby.
+3. Check if there are gaps of 90+ minutes between events. If so, insert ONE practical suggestion using a place from the provided list or a specific real place you know nearby. Prefer places from the provided list when relevant.
+   - Suggest breakfast/lunch/dinner at appropriate meal times
+   - Fill gaps with a nearby coffee shop, park, or museum
+   - Suggest a post-event bar or cafe when the day ends before 9 PM
+   - Prefer places within walking distance of the surrounding events
+   - Consider price_level vs the overall day budget
 4. Flag any scheduling conflicts where travel time makes an event unreachable.
 5. Write a one-line day summary at the top.
 
@@ -68,7 +74,7 @@ function formatChicagoTime(isoStr) {
 }
 
 async function buildItinerary(params) {
-  const { selectedEvents, homeLocation, date, weatherData, mobility, groupType } = params;
+  const { selectedEvents, nearbyPlaces, homeLocation, date, weatherData, mobility, groupType } = params;
 
   if (!selectedEvents?.length) {
     return { summary: 'No events selected.', stops: [], warnings: [] };
@@ -94,8 +100,18 @@ async function buildItinerary(params) {
     ? `${weatherData.tempHighF}°F, ${weatherData.summary}`
     : null;
 
+  // Format places for AI (if provided)
+  const placesForAI = (nearbyPlaces || []).slice(0, 10).map((p) => ({
+    name: p.name,
+    category: Array.isArray(p.category) ? p.category[0] : p.category,
+    address: p.address || null,
+    rating: p.rating || null,
+    price_level: p.price_level || null,
+  }));
+
   const userMessage = JSON.stringify({
     events: eventsForAI,
+    nearby_places: placesForAI,
     date,
     weather: weatherSummary,
     user_mobility: mobility || 'driving',

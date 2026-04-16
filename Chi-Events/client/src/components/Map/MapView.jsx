@@ -9,8 +9,11 @@ import { useAuth } from '../../hooks/useAuth.js';
 import { supabase } from '../../services/supabase.js';
 import { CATEGORY_HEX, DEFAULT_HEX, ALL_CATEGORIES } from '../../utils/categoryColors.js';
 import EventDetailPanel from '../Events/EventDetailPanel.jsx';
+import PlaceDetailPanel from '../Places/PlaceDetailPanel.jsx';
 import { NEIGHBORHOOD_CENTERS } from '../../utils/neighborhoods.js';
 import { usePlanStore } from '../../store/plan.js';
+
+const PLACE_COLOR = '#8B5CF6'; // purple
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -51,6 +54,11 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
   const [todayWeather, setTodayWeather] = useState(null);
   // "For You" toggle — only active when user is logged in
   const [forYouOn, setForYouOn] = useState(true);
+  // Events/Places visibility toggles
+  const [showEvents, setShowEvents] = useState(true);
+  const [showPlaces, setShowPlaces] = useState(true);
+  // Selected place (separate from selectedEventId)
+  const [selectedPlaceId, setSelectedPlaceId] = useState(null);
 
   const loadEvents = useCallback(async () => {
     if (!map.current) return;
@@ -101,7 +109,14 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
         if (endDate) params.end_date = endDate;
       }
 
-      const events = await api.getEventsWithinBounds(params);
+      // Load events and places in parallel
+      const eventsPromise = api.getEventsWithinBounds(params);
+      const placesPromise = api.getPlacesWithinBounds({
+        north: params.north, south: params.south,
+        east: params.east, west: params.west,
+      });
+
+      const [events, places] = await Promise.all([eventsPromise, placesPromise.catch(() => [])]);
 
       const geojson = { type: 'FeatureCollection', features: [] };
 
@@ -131,8 +146,28 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
       if (map.current.getSource('events')) {
         map.current.getSource('events').setData(geojson);
       }
+
+      // Places GeoJSON
+      const placesGeojson = { type: 'FeatureCollection', features: [] };
+      places.forEach((p) => {
+        if (!p.coordinates?.coordinates) return;
+        placesGeojson.features.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: p.coordinates.coordinates },
+          properties: {
+            id: p.id,
+            name: p.name,
+            primary_category: Array.isArray(p.category) ? p.category[0] : null,
+            rating: p.rating,
+            price_level: p.price_level,
+          },
+        });
+      });
+      if (map.current.getSource('places')) {
+        map.current.getSource('places').setData(placesGeojson);
+      }
     } catch (err) {
-      console.error('Failed to load events:', err);
+      console.error('Failed to load map data:', err);
     }
   }, [tripMode, tripDate, categories, startDate, endDate, searchQuery, neighborhood, radius, isPlanOpen, planDate]);
 
@@ -232,6 +267,56 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     });
     map.current.on('mouseenter', 'event-clusters', () => { map.current.getCanvas().style.cursor = 'pointer'; });
     map.current.on('mouseleave', 'event-clusters', () => { map.current.getCanvas().style.cursor = ''; });
+
+    // ── Places source + layers (purple squares) ──
+    if (!map.current.getSource('places')) {
+      map.current.addSource('places', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] },
+      });
+
+      // Square marker — outer glow
+      map.current.addLayer({
+        id: 'place-glow',
+        type: 'circle',
+        source: 'places',
+        paint: {
+          'circle-color': PLACE_COLOR,
+          'circle-radius': 14,
+          'circle-opacity': 0.15,
+        },
+      });
+
+      // Square marker — main (using symbol with a square icon via circle for now)
+      map.current.addLayer({
+        id: 'place-marker',
+        type: 'circle',
+        source: 'places',
+        paint: {
+          'circle-color': PLACE_COLOR,
+          'circle-radius': 7,
+          'circle-stroke-width': 2,
+          'circle-stroke-color': '#ffffff',
+          'circle-opacity': 0.95,
+        },
+      });
+
+      // Place click handlers
+      map.current.on('click', 'place-marker', (e) => {
+        const id = e.features[0].properties.id;
+        onSelectEvent(null); // close any open event panel
+        setSelectedPlaceId(id);
+      });
+      map.current.on('click', 'place-glow', (e) => {
+        const id = e.features[0].properties.id;
+        onSelectEvent(null);
+        setSelectedPlaceId(id);
+      });
+      ['place-marker', 'place-glow'].forEach((layer) => {
+        map.current.on('mouseenter', layer, () => { map.current.getCanvas().style.cursor = 'pointer'; });
+        map.current.on('mouseleave', layer, () => { map.current.getCanvas().style.cursor = ''; });
+      });
+    }
   }
 
   useEffect(() => {
@@ -276,6 +361,19 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     if (!center) return;
     map.current.flyTo({ center: [center.lng, center.lat], zoom: 13, duration: 800 });
   }, [neighborhood]);
+
+  // Toggle event/place layer visibility
+  useEffect(() => {
+    if (!map.current) return;
+    const eventLayers = ['event-clusters', 'event-cluster-count', 'event-unclustered-glow', 'event-unclustered'];
+    const placeLayers = ['place-glow', 'place-marker'];
+    eventLayers.forEach((id) => {
+      if (map.current.getLayer(id)) map.current.setLayoutProperty(id, 'visibility', showEvents ? 'visible' : 'none');
+    });
+    placeLayers.forEach((id) => {
+      if (map.current.getLayer(id)) map.current.setLayoutProperty(id, 'visibility', showPlaces ? 'visible' : 'none');
+    });
+  }, [showEvents, showPlaces]);
 
   // Reload markers when filters or trip date/mode changes
   useEffect(() => {
@@ -403,6 +501,27 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     <div className="relative flex-1 h-full">
       <div ref={mapContainer} className="w-full h-full" />
 
+      {/* Events / Places toggle */}
+      <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex gap-1 theme-surface rounded-full theme-shadow border theme-border-s p-0.5">
+        <button
+          onClick={() => setShowEvents((v) => !v)}
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+            showEvents ? 'bg-[var(--accent)] text-white' : 'theme-muted'
+          }`}
+        >
+          Events {showEvents ? '✓' : ''}
+        </button>
+        <button
+          onClick={() => setShowPlaces((v) => !v)}
+          className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
+            showPlaces ? 'text-white' : 'theme-muted'
+          }`}
+          style={showPlaces ? { backgroundColor: PLACE_COLOR } : {}}
+        >
+          Places {showPlaces ? '✓' : ''}
+        </button>
+      </div>
+
       {/* Category legend — top-left on mobile, hidden on desktop (shown in filters sidebar) */}
       <div className="absolute top-3 left-3 z-10 md:hidden theme-surface rounded-2xl theme-shadow p-2 border theme-border-s">
         <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
@@ -446,6 +565,13 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
         <EventDetailPanel
           eventId={selectedEventId}
           onClose={() => onSelectEvent(null)}
+        />
+      )}
+
+      {selectedPlaceId && !selectedEventId && (
+        <PlaceDetailPanel
+          placeId={selectedPlaceId}
+          onClose={() => setSelectedPlaceId(null)}
         />
       )}
     </div>
