@@ -773,11 +773,19 @@ Both react to filter changes independently. Map reloads via `useEffect` watching
 
 ### Place Category Filtering Pattern
 Place category filters (Restaurant, Coffee, Bar, etc.) are **decoupled** from `loadEvents`. The data flow:
-1. `loadEvents` fetches all places from API → stores raw data in `rawPlacesRef`
-2. A separate `useEffect` watches `activePlaceCategories` → filters `rawPlacesRef` → sets filtered GeoJSON on `map.getSource('places')`
+1. `loadEvents` fetches all places from API → stores in `rawPlaces` state via `setRawPlaces(places)`
+2. A separate `useEffect` watches `[rawPlaces, activePlaceCategories, zoomedIn]` → filters → sets GeoJSON on `map.getSource('places')` + toggles layer visibility
 3. Clicking a place pill only triggers step 2 (instant, no API call) — NOT step 1
+4. Place pills are always visible. Categories start EMPTY (no markers by default). User clicks to opt in.
 
 **Why separate?** `activePlaceCategories` is a `Set`. Putting a Set in `useCallback` deps causes the callback to be recreated on every change (Object.is comparison fails for different Set refs). If `loadEvents` depended on it, every pill click would trigger a full event+place API reload, causing markers to flash-disappear.
+
+### Plan a Day ↔ Map Sync
+- `selectedEventId` in Home.jsx is shared between MapView and PlanDaySidebar
+- Clicking a map marker highlights the card in the sidebar + scrolls into view
+- Clicking a sidebar card flies the map to that event with offset for panel coverage
+- PlanDaySidebar reads `categories` and `searchQuery` from useFiltersStore — both map and sidebar update together when filters change
+- EventDetailPanel shows "Add to My Day" button when Plan mode is open
 
 ### Neighborhood Filter Behavior
 When a neighborhood is selected:

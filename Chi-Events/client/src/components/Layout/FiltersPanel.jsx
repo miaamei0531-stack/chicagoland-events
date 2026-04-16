@@ -95,28 +95,6 @@ export default function FiltersPanel({ open, onClose }) {
           <DateRangePicker />
         )}
 
-        {/* Places legend — shows when zoomed in */}
-        <div className="pt-2 border-t theme-border-s">
-          <p className="text-xs font-semibold theme-muted uppercase tracking-widest mb-2">Places</p>
-          <p className="text-[10px] theme-faint mb-1.5">Zoom in to see nearby places · color-coded by type</p>
-          <div className="flex flex-wrap gap-1.5">
-            {[
-              { cat: 'Restaurant', color: '#E8601C' },
-              { cat: 'Coffee', color: '#92400E' },
-              { cat: 'Bar', color: '#6366F1' },
-              { cat: 'Park', color: '#16A34A' },
-              { cat: 'Museum', color: '#0EA5E9' },
-              { cat: 'Movie Theater', color: '#EC4899' },
-              { cat: 'Spa', color: '#D946EF' },
-            ].map(({ cat, color }) => (
-              <div key={cat} className="flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: color }} />
-                <span className="text-[10px] theme-muted">{cat}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
         {/* Category legend — desktop only */}
         <div className="hidden md:block pt-2 border-t theme-border-s">
           <p className="text-xs font-semibold theme-muted uppercase tracking-widest mb-2">Event Legend</p>
