@@ -69,7 +69,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
   const featuresRef = useRef([]); // store loaded features for flyTo lookups
   const homeMarkerRef = useRef(null);
   const loadEventsRef = useRef(null); // always points to the latest loadEvents closure
-  const rawPlacesRef = useRef([]); // raw places data from last API fetch (unfiltered)
+  // (rawPlacesRef removed — using rawPlaces state instead for reactivity)
   const { categories, startDate, endDate, searchQuery, neighborhood, radius } = useFiltersStore();
   const dark = useThemeStore((s) => s.dark);
   const { tripMode, tripDate, tripEvents, routeMode } = useTripStore();
@@ -81,10 +81,11 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
   const [todayWeather, setTodayWeather] = useState(null);
   // "For You" toggle — only active when user is logged in
   const [forYouOn, setForYouOn] = useState(true);
-  // Events/Places visibility toggles — places OFF by default, only when zoomed in
-  const [showPlaces, setShowPlaces] = useState(false);
+  // Places: starts empty (nothing selected). Clicking a pill adds that category.
+  // Places are visible when at least one category is selected AND zoomed in.
   const [zoomedIn, setZoomedIn] = useState(false); // true when zoom >= 14
-  const [activePlaceCategories, setActivePlaceCategories] = useState(new Set(ALL_PLACE_CATEGORIES));
+  const [activePlaceCategories, setActivePlaceCategories] = useState(new Set());
+  const [rawPlaces, setRawPlaces] = useState([]); // raw places from last API fetch
   // Selected place (separate from selectedEventId)
   const [selectedPlaceId, setSelectedPlaceId] = useState(null);
 
@@ -179,8 +180,8 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
         map.current.getSource('events').setData(geojson);
       }
 
-      // Store raw places for category filtering (done in separate effect)
-      rawPlacesRef.current = places;
+      // Store raw places — the filter effect will pick up the new data
+      setRawPlaces(places);
     } catch (err) {
       console.error('Failed to load map data:', err);
     }
@@ -380,40 +381,45 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     map.current.flyTo({ center: [center.lng, center.lat], zoom: 13, duration: 800 });
   }, [neighborhood]);
 
-  // Filter places by active categories and update map source.
-  // This is DECOUPLED from loadEvents — clicking a place pill does NOT
-  // reload events. It only re-filters the already-loaded places data.
-  useEffect(() => {
-    if (!map.current || !map.current.getSource('places')) return;
-    const placesGeojson = { type: 'FeatureCollection', features: [] };
-    rawPlacesRef.current.forEach((p) => {
-      if (!p.coordinates?.coordinates) return;
-      const pCat = Array.isArray(p.category) ? p.category[0] : null;
-      if (pCat && !activePlaceCategories.has(pCat)) return;
-      placesGeojson.features.push({
-        type: 'Feature',
-        geometry: { type: 'Point', coordinates: p.coordinates.coordinates },
-        properties: {
-          id: p.id,
-          name: p.name,
-          primary_category: pCat,
-          rating: p.rating,
-          price_level: p.price_level,
-        },
-      });
-    });
-    map.current.getSource('places').setData(placesGeojson);
-  }, [activePlaceCategories]);
-
-  // Toggle place layer visibility — only show when zoomed in AND toggled on
+  // Filter places by active categories and update map source + visibility.
+  // Runs when new places arrive (rawPlaces) OR when category selection changes.
+  // DECOUPLED from loadEvents — clicking a pill does NOT reload events.
+  const showPlaces = activePlaceCategories.size > 0 && zoomedIn;
   useEffect(() => {
     if (!map.current) return;
-    const placeLayers = ['place-glow', 'place-marker'];
-    const visible = showPlaces && zoomedIn;
-    placeLayers.forEach((id) => {
-      if (map.current.getLayer(id)) map.current.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
+
+    // Update source data
+    if (map.current.getSource('places')) {
+      const placesGeojson = { type: 'FeatureCollection', features: [] };
+      if (activePlaceCategories.size > 0) {
+        rawPlaces.forEach((p) => {
+          if (!p.coordinates?.coordinates) return;
+          const pCat = Array.isArray(p.category) ? p.category[0] : null;
+          if (pCat && !activePlaceCategories.has(pCat)) return;
+          placesGeojson.features.push({
+            type: 'Feature',
+            geometry: { type: 'Point', coordinates: p.coordinates.coordinates },
+            properties: {
+              id: p.id,
+              name: p.name,
+              primary_category: pCat,
+              rating: p.rating,
+              price_level: p.price_level,
+            },
+          });
+        });
+      }
+      map.current.getSource('places').setData(placesGeojson);
+    }
+
+    // Update layer visibility
+    const visible = activePlaceCategories.size > 0 && zoomedIn;
+    ['place-glow', 'place-marker'].forEach((id) => {
+      if (map.current.getLayer(id)) {
+        map.current.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');
+      }
     });
-  }, [showPlaces, zoomedIn]);
+  }, [rawPlaces, activePlaceCategories, zoomedIn]);
 
   // Reload markers when filters or trip date/mode changes
   useEffect(() => {
@@ -546,12 +552,11 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 theme-surface rounded-2xl theme-shadow border theme-border-s px-2 py-1.5 flex items-center gap-1.5 max-w-[90vw] overflow-x-auto">
           <span className="text-[10px] theme-faint whitespace-nowrap shrink-0">Nearby:</span>
           {ALL_PLACE_CATEGORIES.map((cat) => {
-            const isActive = showPlaces && activePlaceCategories.has(cat);
+            const isActive = activePlaceCategories.has(cat);
             return (
               <button
                 key={cat}
                 onClick={() => {
-                  if (!showPlaces) setShowPlaces(true);
                   setActivePlaceCategories((prev) => {
                     const next = new Set(prev);
                     if (next.has(cat)) next.delete(cat);
