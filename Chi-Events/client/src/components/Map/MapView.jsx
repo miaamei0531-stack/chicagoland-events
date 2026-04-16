@@ -13,7 +13,33 @@ import PlaceDetailPanel from '../Places/PlaceDetailPanel.jsx';
 import { NEIGHBORHOOD_CENTERS } from '../../utils/neighborhoods.js';
 import { usePlanStore } from '../../store/plan.js';
 
-const PLACE_COLOR = '#8B5CF6'; // purple
+// Place category colors — each type gets its own color
+const PLACE_CATEGORY_HEX = {
+  Restaurant: '#E8601C',     // warm orange
+  Coffee:     '#92400E',     // brown
+  Bar:        '#6366F1',     // indigo
+  Park:       '#16A34A',     // green
+  Trail:      '#16A34A',     // green
+  Museum:     '#0EA5E9',     // sky blue
+  'Movie Theater': '#EC4899', // pink
+  Spa:        '#D946EF',     // fuchsia
+  Shopping:   '#8B5CF6',     // purple
+  Sports:     '#EAB308',     // yellow
+  'Live Music Venue': '#7C3AED', // violet
+};
+const PLACE_DEFAULT_HEX = '#8B5CF6';
+const ALL_PLACE_CATEGORIES = ['Restaurant', 'Coffee', 'Bar', 'Park', 'Museum', 'Movie Theater', 'Spa'];
+
+function placeCategoryColorExpression() {
+  const expr = ['match', ['get', 'primary_category']];
+  Object.entries(PLACE_CATEGORY_HEX).forEach(([cat, hex]) => {
+    expr.push(cat, hex);
+  });
+  expr.push(PLACE_DEFAULT_HEX);
+  return expr;
+}
+
+const PLACE_COLOR_EXPR = placeCategoryColorExpression();
 
 mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_TOKEN;
 
@@ -55,9 +81,9 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
   // "For You" toggle — only active when user is logged in
   const [forYouOn, setForYouOn] = useState(true);
   // Events/Places visibility toggles — places OFF by default, only when zoomed in
-  const [showEvents, setShowEvents] = useState(true);
   const [showPlaces, setShowPlaces] = useState(false);
   const [zoomedIn, setZoomedIn] = useState(false); // true when zoom >= 14
+  const [activePlaceCategories, setActivePlaceCategories] = useState(new Set(ALL_PLACE_CATEGORIES));
   // Selected place (separate from selectedEventId)
   const [selectedPlaceId, setSelectedPlaceId] = useState(null);
 
@@ -152,10 +178,12 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
         map.current.getSource('events').setData(geojson);
       }
 
-      // Places GeoJSON
+      // Places GeoJSON — filter by active place categories
       const placesGeojson = { type: 'FeatureCollection', features: [] };
       places.forEach((p) => {
         if (!p.coordinates?.coordinates) return;
+        const pCat = Array.isArray(p.category) ? p.category[0] : null;
+        if (pCat && !activePlaceCategories.has(pCat)) return;
         placesGeojson.features.push({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: p.coordinates.coordinates },
@@ -174,7 +202,7 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     } catch (err) {
       console.error('Failed to load map data:', err);
     }
-  }, [tripMode, tripDate, categories, startDate, endDate, searchQuery, neighborhood, radius, isPlanOpen, planDate]);
+  }, [tripMode, tripDate, categories, startDate, endDate, searchQuery, neighborhood, radius, isPlanOpen, planDate, activePlaceCategories]);
 
   // Keep ref in sync so the moveend handler always calls the latest closure
   useEffect(() => { loadEventsRef.current = loadEvents; }, [loadEvents]);
@@ -186,8 +214,8 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
       type: 'geojson',
       data: { type: 'FeatureCollection', features: [] },
       cluster: true,
-      clusterMaxZoom: 14,
-      clusterRadius: 45,
+      clusterMaxZoom: 12,
+      clusterRadius: 35,
     });
 
     // ── Cluster circle ──
@@ -280,27 +308,27 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
         data: { type: 'FeatureCollection', features: [] },
       });
 
-      // Place marker — subtle glow
+      // Place marker — subtle glow (colored by category)
       map.current.addLayer({
         id: 'place-glow',
         type: 'circle',
         source: 'places',
         layout: { visibility: 'none' },
         paint: {
-          'circle-color': PLACE_COLOR,
+          'circle-color': PLACE_COLOR_EXPR,
           'circle-radius': 10,
-          'circle-opacity': 0.12,
+          'circle-opacity': 0.15,
         },
       });
 
-      // Place marker — small dot
+      // Place marker — small dot (colored by category)
       map.current.addLayer({
         id: 'place-marker',
         type: 'circle',
         source: 'places',
         layout: { visibility: 'none' },
         paint: {
-          'circle-color': PLACE_COLOR,
+          'circle-color': PLACE_COLOR_EXPR,
           'circle-radius': 5,
           'circle-stroke-width': 1.5,
           'circle-stroke-color': '#ffffff',
@@ -506,18 +534,33 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
     <div className="relative flex-1 h-full">
       <div ref={mapContainer} className="w-full h-full" />
 
-      {/* Places toggle — only visible when zoomed in enough */}
+      {/* Places category pills — only visible when zoomed in */}
       {zoomedIn && (
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 flex gap-1 theme-surface rounded-full theme-shadow border theme-border-s p-0.5">
-          <button
-            onClick={() => setShowPlaces((v) => !v)}
-            className={`px-3 py-1 rounded-full text-xs font-medium transition-all ${
-              showPlaces ? 'text-white' : 'theme-muted'
-            }`}
-            style={showPlaces ? { backgroundColor: PLACE_COLOR } : {}}
-          >
-            {showPlaces ? '🍽 Hide Places' : '🍽 Show Places'}
-          </button>
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-10 theme-surface rounded-2xl theme-shadow border theme-border-s px-2 py-1.5 flex items-center gap-1.5 max-w-[90vw] overflow-x-auto">
+          <span className="text-[10px] theme-faint whitespace-nowrap shrink-0">Nearby:</span>
+          {ALL_PLACE_CATEGORIES.map((cat) => {
+            const isActive = showPlaces && activePlaceCategories.has(cat);
+            return (
+              <button
+                key={cat}
+                onClick={() => {
+                  if (!showPlaces) setShowPlaces(true);
+                  setActivePlaceCategories((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(cat)) next.delete(cat);
+                    else next.add(cat);
+                    return next;
+                  });
+                }}
+                className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap transition-all ${
+                  isActive ? 'text-white' : 'theme-muted bg-gray-100 dark:bg-gray-800'
+                }`}
+                style={isActive ? { backgroundColor: PLACE_CATEGORY_HEX[cat] } : {}}
+              >
+                {cat}
+              </button>
+            );
+          })}
         </div>
       )}
 

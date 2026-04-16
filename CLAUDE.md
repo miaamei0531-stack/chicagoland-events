@@ -178,7 +178,21 @@ borderRadius: {
 |---|---|---|---|
 | Official/ingested | `text-official` / `bg-official` | `#3B82F6` | Eventbrite, Ticketmaster, Open Data markers |
 | Community/approved | `text-community` / `bg-community` | `#2E986A` | User-submitted + approved events |
-| Places | — | `#8B5CF6` | Google Places markers (purple) |
+| Places | — | per-category | Google Places markers (color-coded below) |
+
+### Place Category Colors (map markers)
+| Category | Hex | Map marker color |
+|---|---|---|
+| Restaurant | `#E8601C` | warm orange |
+| Coffee | `#92400E` | brown |
+| Bar | `#6366F1` | indigo |
+| Park | `#16A34A` | green |
+| Museum | `#0EA5E9` | sky blue |
+| Movie Theater | `#EC4899` | pink |
+| Spa | `#D946EF` | fuchsia |
+| Shopping | `#8B5CF6` | purple |
+
+Place markers are hidden by default. They appear only when zoomed to neighborhood level (zoom ≥ 14) with category filter pills at the top of the map. Each place links to Google Maps (free, no Place Details API needed).
 
 ### Category Colors (map markers + pills)
 | Category | Hex | Tailwind pill class |
@@ -202,6 +216,8 @@ Defined in `client/src/utils/categoryColors.js` — import `CATEGORY_HEX`, `CATE
 | < 10 events | Orange | `#E8601C` |
 | 10–49 events | Amber | `#D97706` |
 | 50+ events | Green | `#2C7A5C` |
+
+Cluster config: `clusterMaxZoom: 12`, `clusterRadius: 35`. Clusters break apart at zoom 13 to reduce count mismatch when zooming in (viewport-based data reloads).
 
 ### Dark Mode
 - Toggle stored in `useThemeStore` (Zustand, persisted to localStorage as `chi-events-theme`)
