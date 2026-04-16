@@ -24,6 +24,7 @@ export default function PlanDaySidebar({ selectedEventId, onSelectEvent, onClose
   const [building, setBuilding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [nearbyPlaces, setNearbyPlaces] = useState([]);
+  const [buildError, setBuildError] = useState(null);
   const scrollContainerRef = useRef(null);
 
   // Scroll selected event card into view when map marker is clicked
@@ -85,19 +86,33 @@ export default function PlanDaySidebar({ selectedEventId, onSelectEvent, onClose
   // Build itinerary — sort chronologically before sending
   const handleBuildItinerary = useCallback(async () => {
     if (myDayEvents.length < 2) return;
+    setBuildError(null);
     setBuilding(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const sorted = [...myDayEvents].sort((a, b) =>
+      if (!session?.access_token) {
+        setBuildError('Please sign in to build an itinerary.');
+        setBuilding(false);
+        return;
+      }
+      // Filter out place items — only send real event IDs
+      const eventsOnly = myDayEvents.filter((e) => !e.is_place);
+      if (eventsOnly.length < 2) {
+        setBuildError('Add at least 2 events (not just places) to build an itinerary.');
+        setBuilding(false);
+        return;
+      }
+      const sorted = [...eventsOnly].sort((a, b) =>
         new Date(a.start_datetime).getTime() - new Date(b.start_datetime).getTime()
       );
       const data = await api.buildItinerary(
         { event_ids: sorted.map((e) => e.id), date: selectedDate },
-        session?.access_token
+        session.access_token
       );
       setItinerary(data);
     } catch (err) {
       console.error('Failed to build itinerary:', err);
+      setBuildError('Failed to build itinerary. Please try again.');
     } finally {
       setBuilding(false);
     }
@@ -183,6 +198,11 @@ export default function PlanDaySidebar({ selectedEventId, onSelectEvent, onClose
             )}
 
             {building && <LoadingState />}
+            {buildError && (
+              <div className="px-3 py-2 rounded-lg bg-red-50 border border-red-200 text-xs text-red-600">
+                {buildError}
+              </div>
+            )}
 
             {/* Events for this date */}
             <section>

@@ -30,7 +30,7 @@ export default function MyDayList({ events, onRemove, onReorder, onBuildItinerar
         </div>
       ))}
 
-      {events.length >= 2 && (
+      {events.filter((e) => !e.is_place).length >= 2 && (
         <button
           onClick={onBuildItinerary}
           disabled={building}
@@ -40,7 +40,7 @@ export default function MyDayList({ events, onRemove, onReorder, onBuildItinerar
           {building ? 'Building…' : 'Build My Itinerary →'}
         </button>
       )}
-      {events.length === 1 && (
+      {events.filter((e) => !e.is_place).length < 2 && (
         <p className="text-[10px] theme-faint text-center">Add at least 2 events to generate an itinerary with travel between stops</p>
       )}
     </div>
