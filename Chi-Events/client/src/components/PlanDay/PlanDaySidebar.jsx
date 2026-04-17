@@ -18,7 +18,7 @@ export default function PlanDaySidebar({ selectedEventId, onSelectEvent, onClose
   const {
     selectedDate, setSelectedDate,
     dateEvents, setDateEvents, dateEventsLoading, setDateEventsLoading,
-    myDayEvents, addToMyDay, removeFromMyDay, clearMyDay,
+    myDayEvents, addToMyDay, removeFromMyDay, reorderMyDay, clearMyDay,
     itinerary, setItinerary, planStep, startOver,
   } = usePlanStore();
 
@@ -196,6 +196,7 @@ export default function PlanDaySidebar({ selectedEventId, onSelectEvent, onClose
                 <MyDayList
                   events={myDayEvents}
                   onRemove={removeFromMyDay}
+                  onReorder={reorderMyDay}
                   onBuildItinerary={handleBuildItinerary}
                   building={building}
                 />

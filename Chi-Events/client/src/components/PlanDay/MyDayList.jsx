@@ -93,17 +93,19 @@ export default function MyDayList({ events, onRemove, onReorder, onBuildItinerar
             </p>
           </div>
 
-          {/* Up/Down for mobile */}
-          <div className="flex flex-col shrink-0">
+          {/* Reorder buttons */}
+          <div className="flex flex-col shrink-0 gap-0.5">
             <button
-              onClick={() => moveUp(idx)}
+              onClick={(e) => { e.stopPropagation(); moveUp(idx); }}
               disabled={idx === 0}
-              className="text-[9px] leading-none theme-faint hover:theme-text disabled:opacity-20 px-0.5"
+              className="w-5 h-4 flex items-center justify-center rounded text-[10px] leading-none theme-faint hover:theme-text hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-20 transition-colors"
+              title="Move up"
             >▲</button>
             <button
-              onClick={() => moveDown(idx)}
+              onClick={(e) => { e.stopPropagation(); moveDown(idx); }}
               disabled={idx === events.length - 1}
-              className="text-[9px] leading-none theme-faint hover:theme-text disabled:opacity-20 px-0.5"
+              className="w-5 h-4 flex items-center justify-center rounded text-[10px] leading-none theme-faint hover:theme-text hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-20 transition-colors"
+              title="Move down"
             >▼</button>
           </div>
 
