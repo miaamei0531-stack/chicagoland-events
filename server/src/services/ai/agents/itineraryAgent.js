@@ -134,10 +134,20 @@ async function buildItinerary(params) {
   });
 
   try {
-    const result = await callClaudeJSON(SYSTEM_PROMPT, userMessage, {
-      model: 'claude-haiku-4-5-20251001',
-      maxTokens: 3000,
-    });
+    // Try Haiku first, fall back to Sonnet if model not available
+    let result;
+    try {
+      result = await callClaudeJSON(SYSTEM_PROMPT, userMessage, {
+        model: 'claude-haiku-4-5-20251001',
+        maxTokens: 3000,
+      });
+    } catch (modelErr) {
+      console.error('Haiku failed, trying Sonnet:', modelErr.message);
+      result = await callClaudeJSON(SYSTEM_PROMPT, userMessage, {
+        model: 'claude-sonnet-4-6',
+        maxTokens: 3000,
+      });
+    }
 
     // Safety: override event stop times with our server-formatted values
     if (result.stops && Array.isArray(result.stops)) {
@@ -160,7 +170,7 @@ async function buildItinerary(params) {
       warnings: result.warnings || [],
     };
   } catch (err) {
-    console.error('Itinerary agent error:', err.message);
+    console.error('Itinerary agent error:', err.message, err.status || '');
     // Fallback: return events in time order with no travel/suggestions
     return {
       summary: `${sorted.length} events for the day.`,
@@ -173,7 +183,7 @@ async function buildItinerary(params) {
         event_id: e.id,
         travel_to_next: null,
       })),
-      warnings: ['AI itinerary builder is unavailable — showing events in time order.'],
+      warnings: [`AI itinerary builder is unavailable — showing events in time order. (${err.message})`],
     };
   }
 }
