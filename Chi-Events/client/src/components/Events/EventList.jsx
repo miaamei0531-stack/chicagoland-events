@@ -20,10 +20,13 @@ export default function EventList({ onSelectEvent, onClose, selectedEventId }) {
   const { events, loading, error } = useEvents();
   const selectedRef = useRef(null);
 
+  // Scroll selected event into view — use requestAnimationFrame to ensure
+  // the DOM ref is assigned after React renders the matching card
   useEffect(() => {
-    if (selectedEventId && selectedRef.current) {
-      selectedRef.current.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
+    if (!selectedEventId) return;
+    requestAnimationFrame(() => {
+      selectedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    });
   }, [selectedEventId]);
 
   return (
@@ -66,7 +69,7 @@ export default function EventList({ onSelectEvent, onClose, selectedEventId }) {
           <div
             key={event.id}
             ref={selectedEventId === event.id ? selectedRef : null}
-            className={`rounded-2xl transition-all ${selectedEventId === event.id ? 'ring-2 ring-[var(--accent)]' : ''}`}
+            className={`rounded-2xl transition-all ${selectedEventId === event.id ? 'ring-2 ring-[#E8601C] bg-orange-50 dark:bg-orange-950/20' : ''}`}
           >
             <EventCard
               event={event}

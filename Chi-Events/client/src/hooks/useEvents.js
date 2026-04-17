@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { api } from '../services/api.js';
 import { useFiltersStore } from '../store/filters.js';
+import { usePlanStore } from '../store/plan.js';
 import { NEIGHBORHOOD_CENTERS } from '../utils/neighborhoods.js';
 
 /**
@@ -27,6 +28,8 @@ export function useEvents() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const { categories, startDate, endDate, searchQuery, neighborhood, radius } = useFiltersStore();
+  const isPlanOpen = usePlanStore((s) => s.isPlanOpen);
+  const planDate = usePlanStore((s) => s.selectedDate);
 
   useEffect(() => {
     setLoading(true);
@@ -37,9 +40,16 @@ export function useEvents() {
 
     // Apply text/category filters
     if (categories.length) params.category = categories;
-    if (startDate) params.start_date = startDate;
-    if (endDate) params.end_date = endDate;
     if (searchQuery) params.q = searchQuery;
+
+    // Date: Plan mode locks to plan date, otherwise use filter dates
+    if (isPlanOpen && planDate) {
+      params.start_date = planDate;
+      params.end_date = planDate;
+    } else {
+      if (startDate) params.start_date = startDate;
+      if (endDate) params.end_date = endDate;
+    }
 
     // Apply neighborhood + radius — SAME logic as MapView.jsx loadEvents()
     const nbCenter = neighborhood ? NEIGHBORHOOD_CENTERS[neighborhood] : null;
@@ -65,7 +75,7 @@ export function useEvents() {
       .then(setEvents)
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [categories, startDate, endDate, searchQuery, neighborhood, radius]);
+  }, [categories, startDate, endDate, searchQuery, neighborhood, radius, isPlanOpen, planDate]);
 
   return { events, loading, error };
 }
