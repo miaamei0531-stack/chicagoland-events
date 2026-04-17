@@ -902,7 +902,7 @@ Agents under `server/src/services/ai/agents/`:
 | `itineraryAgent.js` | Given selected events → returns ordered itinerary with travel times + suggestions |
 | `dataQualityAgent.js` | Nightly cron — flags permit-style events, infers is_outdoor, infers is_free |
 
-All agents use **Claude Sonnet** (`claude-sonnet-4-6` via `@anthropic-ai/sdk`).
+All agents use **Claude Haiku** (`claude-haiku-4-5-20251001` via `@anthropic-ai/sdk`) for cost efficiency (~70% cheaper than Sonnet, ~$0.003/call). Prompts are detailed with examples to compensate for the smaller model.
 Key: `ANTHROPIC_API_KEY` in server env — never expose to client.
 
 Caching: both recommendation and itinerary results are cached in-memory (Map) to prevent repeated API calls.
