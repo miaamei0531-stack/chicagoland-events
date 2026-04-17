@@ -572,21 +572,22 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
 
     if (!isPlanOpen || myDayEvents.length === 0) return;
 
-    // Get coordinates from My Day events (skip places without coords)
+    // Get coordinates from all My Day items (events + places)
     const stops = myDayEvents
-      .filter((e) => e.coordinates?.coordinates || (!e.is_place && e.coordinates))
       .map((e) => {
         const coords = e.coordinates?.coordinates;
-        return coords ? { lng: coords[0], lat: coords[1], title: e.title } : null;
+        if (!coords) return null;
+        return { lng: coords[0], lat: coords[1], title: e.title, isPlace: !!e.is_place };
       })
       .filter(Boolean);
 
     if (stops.length === 0) return;
 
-    // Add numbered markers for each stop
+    // Add numbered markers for each stop (orange for events, purple for places)
     stops.forEach((stop, i) => {
+      const bg = stop.isPlace ? '#8B5CF6' : '#E8601C';
       const el = document.createElement('div');
-      el.style.cssText = `width:24px;height:24px;border-radius:50%;background:#E8601C;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;cursor:default;`;
+      el.style.cssText = `width:24px;height:24px;border-radius:50%;background:${bg};border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff;cursor:default;`;
       el.textContent = String(i + 1);
       el.title = stop.title;
       const marker = new mapboxgl.Marker({ element: el, anchor: 'center' })

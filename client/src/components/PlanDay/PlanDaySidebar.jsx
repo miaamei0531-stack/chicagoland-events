@@ -277,6 +277,7 @@ export default function PlanDaySidebar({ selectedEventId, onSelectEvent, onClose
                         start_datetime: null,
                         is_place: true,
                         place_id: p.id,
+                        coordinates: p.coordinates,
                       })}
                       onRemove={() => removeFromMyDay(`place-${place.id}`)}
                     />

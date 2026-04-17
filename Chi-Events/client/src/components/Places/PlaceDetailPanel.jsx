@@ -78,6 +78,7 @@ export default function PlaceDetailPanel({ placeId, onClose }) {
       start_datetime: null,
       is_place: true,
       place_id: place.id,
+      coordinates: place.coordinates,
     });
   }
 
