@@ -86,8 +86,8 @@ export default function Home() {
           <FiltersPanel open={true} onClose={() => setFiltersOpen(false)} />
         </div>
 
-        {/* Mobile plan / events / trip drawer */}
-        <div className={`md:hidden fixed inset-y-0 right-0 z-30 w-80 theme-surface flex flex-col overflow-hidden transform transition-transform duration-200 ${
+        {/* Mobile plan / events / trip drawer — 60% width so map stays visible */}
+        <div className={`md:hidden fixed inset-y-0 right-0 z-30 w-[60vw] max-w-80 theme-surface flex flex-col overflow-hidden transform transition-transform duration-200 border-l theme-border-s ${
           (listOpen || isPlanOpen) ? 'translate-x-0' : 'translate-x-full'
         }`}>
           {isPlanOpen ? (

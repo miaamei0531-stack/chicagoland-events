@@ -674,8 +674,8 @@ export default function MapView({ selectedEventId, onSelectEvent }) {
         })}
       </div>
 
-      {/* Category legend — top-left on mobile, hidden on desktop (shown in filters sidebar) */}
-      <div className="absolute top-3 left-3 z-10 md:hidden theme-surface rounded-2xl theme-shadow p-2 border theme-border-s">
+      {/* Category legend — bottom-left on mobile (above bottom nav), hidden on desktop */}
+      <div className="absolute bottom-20 left-3 z-10 md:hidden theme-surface rounded-2xl theme-shadow p-2 border theme-border-s opacity-90">
         <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
           {ALL_CATEGORIES.map((cat) => (
             <div key={cat} className="flex items-center gap-1">
